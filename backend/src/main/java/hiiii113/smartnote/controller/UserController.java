@@ -1,5 +1,6 @@
 package hiiii113.smartnote.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.dto.LoginDto;
 import hiiii113.smartnote.dto.RegisterDto;
 import hiiii113.smartnote.service.UserService;
@@ -21,10 +22,14 @@ public class UserController
 
     // 登录
     @PostMapping("/login")
-    public Result<Void> login(@Valid @RequestBody LoginDto dto)
+    public Result<String> login(@Valid @RequestBody LoginDto dto)
     {
+        // 调用 service 层代码
         userService.login(dto);
-        return Result.ok("登录成功！");
+        // 获取 Token
+        String token = StpUtil.getTokenValue();
+        // 返回信息和 Token
+        return Result.ok("登录成功！", token);
     }
 
     // 注册

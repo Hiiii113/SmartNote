@@ -1,5 +1,6 @@
 package hiiii113.smartnote.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import hiiii113.smartnote.dto.LoginDto;
 import hiiii113.smartnote.dto.RegisterDto;
@@ -37,17 +38,34 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         {
             user = this.lambdaQuery().eq(User::getPhone, dto.getPhone()).one();
             // 没有查询到或者密码不匹配时
-            if (user == null || !PasswordUtil.matches(dto.getPassword(), user.getPassword()))
+            if (user == null)
             {
-                throw new BusinessException("手机号或密码错误！", Result.CODE_BAD_REQUEST);
+                throw new BusinessException("该账户未注册！", Result.CODE_BAD_REQUEST);
             }
+            else if (!PasswordUtil.matches(dto.getPassword(), user.getPassword()))
+            {
+                throw new BusinessException("用户名或密码错误！", Result.CODE_BAD_REQUEST);
+            }
+            else
+            {
+                StpUtil.login(user.getId());
+            }
+
         }
         else
         {
             user = this.lambdaQuery().eq(User::getEmail, dto.getEmail()).one();
-            if (user == null || !PasswordUtil.matches(dto.getPassword(), user.getPassword()))
+            if (user == null)
             {
-                throw new BusinessException("邮箱或密码错误！", Result.CODE_BAD_REQUEST);
+                throw new BusinessException("该账户未注册！", Result.CODE_BAD_REQUEST);
+            }
+            else if (!PasswordUtil.matches(dto.getPassword(), user.getPassword()))
+            {
+                throw new BusinessException("用户名或密码错误！", Result.CODE_BAD_REQUEST);
+            }
+            else
+            {
+                StpUtil.login(user.getId());
             }
         }
     }

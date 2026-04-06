@@ -12,15 +12,18 @@ CREATE TABLE `user`
 (
     `id`         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID，主键',
     `username`   VARCHAR(50)  NOT NULL UNIQUE COMMENT '用户名，唯一，可修改',
-    `phone`      VARCHAR(20)  NOT NULL UNIQUE COMMENT '手机号，必须',
+    `phone`      VARCHAR(20) UNIQUE COMMENT '手机号，必须',
     `email`      VARCHAR(100) UNIQUE COMMENT '邮箱，可选',
     `password`   VARCHAR(255) NOT NULL COMMENT '加密后的密码',
-    `avatar` VARCHAR(255) COMMENT '头像图片URL，有默认头像',
+    `avatar`     VARCHAR(255) COMMENT '头像图片URL，有默认头像',
     `motto`      VARCHAR(200) COMMENT '座右铭',
     `is_banned`  TINYINT  DEFAULT 0 COMMENT '是否被封禁 0-正常 1-封禁',
     `is_deleted` TINYINT  DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '用户信息最后修改时间'
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '用户信息最后修改时间',
+
+    -- 手机号和邮箱至少一个不为空
+    CONSTRAINT chk_phone_or_email CHECK (phone IS NOT NULL OR email IS NOT NULL)
 ) COMMENT '用户表';
 
 
@@ -47,9 +50,10 @@ CREATE TABLE `folder`
 (
     `id`         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '文件夹ID',
     `user_id`    BIGINT       NOT NULL COMMENT '所属用户ID',
+    `parent_id`  BIGINT       NOT NULL DEFAULT 0 COMMENT '所属文件夹',
     `name`       VARCHAR(100) NOT NULL COMMENT '文件夹名称',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+    `created_at` DATETIME              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME              DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
     INDEX `idx_user_id` (`user_id`)
 ) COMMENT '文件夹表';
 
