@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: SmartNote
+
+  # 数据库配置
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# 服务端口
+server:
+  port: 8081
+
+# Mybatis-Plus配置
+mybatis-plus:
+  type-aliases-package: hiiii113.smartnote.entity # 别名扫描包
+  mapper-locations: "classpath*:/mapper/**/*.xml" # Mapper.xml文件地址，默认值
+  configuration:
+    map-underscore-to-camel-case: true # 是否开启下划线和驼峰的映射
+    cache-enabled: false # 是否开启二级缓存
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 开启控制台SQL日志
+  global-config:
+    db-config:
+      id-type: auto # id为雪花算法生成
+      update-strategy: not_null # 更新策略：只更新非空字段
+      logic-delete-field: isDeleted   # 逻辑删除字段
+      logic-delete-value: 1           # 1-删除
+      logic-not-delete-value: 0       # 0-正常
