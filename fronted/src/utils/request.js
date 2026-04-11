@@ -27,7 +27,7 @@ instance.interceptors.response.use(
       return response.data
     } else if (code === 401) {
       localStorage.removeItem('token')
-      router.push('/login')
+      router.push('/')
       alert('登录已过期，请重新登录')
     } else {
       console.error(msg)
@@ -45,9 +45,9 @@ export const get = function (url, params) {
   return instance.get(url, { params })
 }
 
-export const post = function (url, data) {
-  // url: 路径地址  data: 数据
-  return instance.post(url, data)
+export const post = function (url, data, config = {}) {
+  // url: 路径地址  data: 数据  config: 额外配置（如timeout）
+  return instance.post(url, data, config)
 }
 
 export const put = function (url, data) {

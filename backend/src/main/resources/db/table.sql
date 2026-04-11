@@ -33,6 +33,7 @@ CREATE TABLE `note`
     `id`         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '笔记ID',
     `user_id`    BIGINT       NOT NULL COMMENT '所属用户ID，不可更改',
     `folder_id`  BIGINT       NOT NULL DEFAULT 0 COMMENT '文件夹id，默认0',
+    `path`       VARCHAR(500) NOT NULL COMMENT '文件路径，如 /root/工作/笔记1',
     `title`      VARCHAR(200) NOT NULL COMMENT '笔记标题',
     `content`    LONGTEXT COMMENT '笔记正文，存Markdown',
     `visibility` VARCHAR(20)           DEFAULT 'PRIVATE' COMMENT '可见性: PRIVATE/FRIENDS/PUBLIC',
@@ -42,6 +43,7 @@ CREATE TABLE `note`
     `created_at` DATETIME              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME              DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
     INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_path` (`path`(191)),
     INDEX `idx_created_at` (`created_at`)
 ) COMMENT '笔记表';
 
@@ -51,10 +53,14 @@ CREATE TABLE `folder`
     `id`         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '文件夹ID',
     `user_id`    BIGINT       NOT NULL COMMENT '所属用户ID',
     `parent_id`  BIGINT       NOT NULL DEFAULT 0 COMMENT '所属文件夹',
+    `path`       VARCHAR(500) NOT NULL COMMENT '文件路径，如 /root/工作',
     `name`       VARCHAR(100) NOT NULL COMMENT '文件夹名称',
+    `is_deleted` TINYINT               DEFAULT 0 COMMENT '逻辑删除 0-正常 1-在回收站',
+    `deleted_at` DATETIME COMMENT '进入回收站的时间',
     `created_at` DATETIME              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME              DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
-    INDEX `idx_user_id` (`user_id`)
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_path` (`path`(191))
 ) COMMENT '文件夹表';
 
 -- 好友关系表

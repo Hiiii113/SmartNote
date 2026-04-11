@@ -4,7 +4,7 @@ import hiiii113.smartnote.enums.FileTreeNodeTypeEnum;
 import lombok.Data;
 
 /**
- * 返回给前端的文件树节点的 dto
+ * 返回给前端的文件树节点
  */
 @Data
 public class FileTreeNodeDto

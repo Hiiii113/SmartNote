@@ -4,10 +4,14 @@ import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 笔记实体类
+ */
 @Data
 public class Note
 {
@@ -18,11 +22,13 @@ public class Note
 
     private Long folderId;
 
+    private String path;
+
     private String title;
 
     private String content;
 
-    private String visibility; //
+    private NoteVisibilityTypeEnum visibility;
 
     private String tags;
 

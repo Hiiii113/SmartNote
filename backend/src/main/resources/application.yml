@@ -1,6 +1,13 @@
 spring:
   application:
     name: SmartNote
+  ai:
+    openai:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/
+      api-key: ${API_KEY}
+      chat:
+        options:
+          model: qwen3.5-flash
 
   # 数据库配置
   datasource:
@@ -25,9 +32,6 @@ mybatis-plus:
     db-config:
       id-type: auto # id为雪花算法生成
       update-strategy: not_null # 更新策略：只更新非空字段
-      logic-delete-field: isDeleted   # 逻辑删除字段
-      logic-delete-value: 1           # 1-删除
-      logic-not-delete-value: 0       # 0-正常
 
 # sa-token 配置
 sa-token:

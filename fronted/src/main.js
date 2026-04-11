@@ -5,6 +5,9 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 
+// 导入 md-editor-v3 样式
+import 'md-editor-v3/lib/style.css'
+
 import App from './App.vue'
 import router from './router'
 

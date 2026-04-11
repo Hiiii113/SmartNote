@@ -6,7 +6,7 @@ import lombok.Data;
 import org.hibernate.validator.constraints.Length;
 
 /**
- * 注册请求DTO
+ * 注册请求
  */
 @Data
 public class RegisterDto
