@@ -63,7 +63,6 @@ public class NotePermissionServiceImpl extends ServiceImpl<NotePermissionMapper,
             permission.setNoteId(noteId);
             permission.setUserId(userId);
             permission.setCanEdit(canEdit ? 1 : 0);
-            permission.setCreatedAt(LocalDateTime.now());
             this.save(permission);
         }
     }

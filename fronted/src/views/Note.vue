@@ -358,10 +358,25 @@
     </el-dialog>
 
     <!-- AI 分析结果弹窗 -->
-    <el-dialog v-model="aiDialogVisible" title="AI 分析结果" width="500px">
-      <div class="ai-result">{{ aiResult }}</div>
+    <el-dialog v-model="aiDialogVisible" title="AI 分析" width="600px">
+      <div v-if="aiLoading" class="ai-loading">
+        <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+        <span>AI 正在分析中...</span>
+      </div>
+      <div v-else-if="aiResult" class="ai-result">
+        <MdPreview :model-value="aiResult" />
+      </div>
+      <div v-else class="ai-empty">
+        <el-empty description="暂无 AI 分析记录" :image-size="80" />
+        <el-button type="primary" @click="handleGenerateAiSummary" :loading="aiGenerating">
+          生成 AI 总结
+        </el-button>
+      </div>
       <template #footer>
-        <el-button type="primary" @click="aiDialogVisible = false">关闭</el-button>
+        <el-button @click="aiDialogVisible = false">关闭</el-button>
+        <el-button v-if="aiResult && !aiLoading" type="primary" @click="handleGenerateAiSummary" :loading="aiGenerating">
+          重新生成
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -379,6 +394,7 @@ import {
   Delete,
   Document,
   Folder,
+  Loading,
   Lock,
   Notebook,
   Plus,
@@ -386,6 +402,8 @@ import {
   User
 } from '@element-plus/icons-vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
+import { MdPreview } from 'md-editor-v3'
+import 'md-editor-v3/lib/preview.css'
 
 const router = useRouter()
 const route = useRoute()
@@ -477,6 +495,7 @@ const getAvatarUrl = (avatar) => {
 
 // AI 分析
 const aiLoading = ref(false)
+const aiGenerating = ref(false)
 const aiResult = ref('')
 const aiDialogVisible = ref(false)
 
@@ -696,7 +715,11 @@ const handleContextDelete = async () => {
   hideContextMenu()
   const data = contextMenuData.value
   try {
-    await ElMessageBox.confirm(`确定要删除该${data.type === 'NOTE' ? '笔记' : '文件夹'}吗？`, '提示', {type: 'warning'})
+    await ElMessageBox.confirm(`确定要删除该${data.type === 'NOTE' ? '笔记' : '文件夹'}吗？`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
     if (data.type === 'NOTE') {
       await del(`/notes/${data.id}`)
     } else {
@@ -746,7 +769,11 @@ const handleContextRestore = async () => {
 const handleContextPermanentDelete = async () => {
   hideContextMenu()
   try {
-    await ElMessageBox.confirm('永久删除后无法恢复，确定要删除吗？', '警告', {type: 'error'})
+    await ElMessageBox.confirm('永久删除后无法恢复，确定要删除吗？', '警告', {
+      type: 'error',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
     await del(`/notes/${contextMenuData.value.id}/permanent`)
     ElMessage.success('已永久删除')
     fetchTrashRootNodes()
@@ -858,19 +885,36 @@ const handleCopyLink = async () => {
   }
 }
 
-// AI 分析笔记
+// AI 分析笔记 - 查询已有记录
 const handleAiAnalyze = async () => {
   if (!currentNote.value) return
   aiLoading.value = true
+  aiResult.value = ''
+  aiDialogVisible.value = true
+  try {
+    const res = await get(`/ai/analyze/${currentNote.value.id}`)
+    aiResult.value = res.data || ''
+  } catch (err) {
+    // 没有记录时保持 aiResult 为空
+    aiResult.value = ''
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+// 生成 AI 总结
+const handleGenerateAiSummary = async () => {
+  if (!currentNote.value) return
+  aiGenerating.value = true
   try {
     const res = await post(`/ai/analyze/${currentNote.value.id}`, {}, { timeout: 120000 })
     aiResult.value = res.data
-    aiDialogVisible.value = true
+    ElMessage.success('AI 分析完成')
   } catch (err) {
-    ElMessage.error('AI分析失败')
+    ElMessage.error('AI 分析失败')
     console.log(err)
   } finally {
-    aiLoading.value = false
+    aiGenerating.value = false
   }
 }
 
@@ -1048,7 +1092,11 @@ const handleHistoryClick = async (item) => {
 // 清空浏览历史
 const handleClearHistory = async () => {
   try {
-    await ElMessageBox.confirm('确定要清空所有浏览历史吗？', '提示', {type: 'warning'})
+    await ElMessageBox.confirm('确定要清空所有浏览历史吗？', '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
     await del('/browse-history')
     ElMessage.success('清空成功')
     historyList.value = []
@@ -1457,8 +1505,24 @@ const handleLogout = async () => {
 }
 
 .ai-result {
-  white-space: pre-wrap;
-  line-height: 1.6;
-  color: #303133;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ai-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 16px;
+  color: #409eff;
+}
+
+.ai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
 }
 </style>

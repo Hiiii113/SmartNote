@@ -114,3 +114,14 @@ CREATE TABLE `browse_history`
     UNIQUE KEY `uk_user_note` (`user_id`, `note_id`), -- 用户查看一篇笔记只能存在一次
     INDEX `idx_user_browsed` (`user_id`, `browsed_at`)
 ) COMMENT '浏览历史表';
+
+-- ai总结表
+CREATE TABLE `ai_summary`
+(
+    `id`         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    `note_id`    BIGINT NOT NULL COMMENT '绑定的笔记ID',
+    `summary`    LONGTEXT COMMENT 'ai总结内容',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '第一次总结的时间',
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近一次总结的时间',
+    UNIQUE KEY `uk_note_id` (`note_id`) -- 一篇笔记只能有一个索引
+) COMMENT 'ai总结表';
