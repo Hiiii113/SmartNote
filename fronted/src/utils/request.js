@@ -1,11 +1,15 @@
 import axios from 'axios'
 import router from '@/router/index.js'
+import { ElMessage } from 'element-plus'
 
 // 创建axios实例
 const instance = axios.create({
   baseURL: 'http://localhost:8081',
   timeout: 10000,
 })
+
+// 防止多次弹窗跳转
+let isRedirecting = false
 
 // 请求拦截器
 instance.interceptors.request.use(
@@ -26,18 +30,40 @@ instance.interceptors.response.use(
     if (code === 200 || code === 201) {
       return response.data
     } else if (code === 401) {
-      localStorage.removeItem('token')
-      router.push('/')
-      alert('登录已过期，请重新登录')
+      handleUnauthorized()
+      return Promise.reject(response.data)
     } else {
-      console.error(msg)
+      ElMessage.error(msg || '请求失败')
       return Promise.reject(response.data)
     }
   },
   (error) => {
+    if (error.response?.status === 401) {
+      handleUnauthorized()
+    } else {
+      ElMessage.error(error.message || '网络错误')
+    }
     return Promise.reject(error)
   },
 )
+
+// 统一处理未授权
+function handleUnauthorized() {
+  // 立即设置标志，防止其他请求重复进入
+  if (isRedirecting) return
+  isRedirecting = true
+
+  localStorage.removeItem('token')
+  // 先关闭所有已有的消息，再显示新的
+  ElMessage.closeAll()
+  ElMessage.warning('登录已过期，请重新登录')
+
+  // 延迟重置，确保跳转完成
+  setTimeout(() => {
+    router.push('/')
+    isRedirecting = false
+  }, 100)
+}
 
 // 封装get和post和put和patch和delete请求
 export const get = function (url, params) {

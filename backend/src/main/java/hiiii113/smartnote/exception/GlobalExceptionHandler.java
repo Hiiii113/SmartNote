@@ -1,5 +1,6 @@
 package hiiii113.smartnote.exception;
 
+import cn.dev33.satoken.exception.NotLoginException;
 import hiiii113.smartnote.utils.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.FieldError;
@@ -22,6 +23,14 @@ public class GlobalExceptionHandler
     {
         log.error("业务异常: ", e);
         return Result.fail(e.getMsg(), e.getCode());
+    }
+
+    // 未登录异常，返回前端
+    @ExceptionHandler({NotLoginException.class})
+    public Result<Void> handleNotLoginException(NotLoginException e)
+    {
+        log.error("未登录异常: ", e);
+        return Result.fail("请登录再访问！", Result.CODE_UNAUTHORIZED);
     }
 
     // 参数校验异常

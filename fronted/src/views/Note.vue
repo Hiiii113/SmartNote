@@ -155,6 +155,8 @@
               <el-button type="primary" text size="small" @click="handleCopyLink">复制链接
               </el-button>
               <el-button type="primary" :icon="Check" @click="handleSaveNote">保存</el-button>
+              <span v-if="autoSaveStatus === 'saving'" class="auto-save-status">保存中...</span>
+              <span v-else-if="autoSaveStatus === 'saved'" class="auto-save-status saved">已保存</span>
             </div>
           </div>
           <div class="editor-tags">
@@ -424,6 +426,9 @@ const activeMenu = ref('note')
 
 // 当前选中的笔记
 const currentNote = ref(null)
+
+// 自动保存状态
+const autoSaveStatus = ref('') // '' | 'saving' | 'saved'
 
 // 树形结构配置
 const treeProps = {
@@ -861,6 +866,36 @@ const handleSaveNote = async () => {
     ElMessage.error('保存失败')
   }
 }
+
+// 自动保存（防抖）
+let autoSaveTimer = null
+const autoSaveNote = () => {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(async () => {
+    if (!currentNote.value?.id || !currentNote.value?.canEdit) return
+    if (!currentNote.value.title) return
+
+    autoSaveStatus.value = 'saving'
+    try {
+      await put(`/notes/${currentNote.value.id}`, {
+        title: currentNote.value.title,
+        content: currentNote.value.content,
+        tags: currentNote.value.tags.join(',')
+      })
+      autoSaveStatus.value = 'saved'
+      setTimeout(() => { autoSaveStatus.value = '' }, 2000)
+    } catch (err) {
+      autoSaveStatus.value = ''
+    }
+  }, 2000)
+}
+
+// 监听内容变化自动保存
+watch(() => currentNote.value?.content, () => {
+  if (currentNote.value?.canEdit) {
+    autoSaveNote()
+  }
+})
 
 // 修改可见性
 const handleVisibilityChange = async (value) => {
@@ -1378,6 +1413,16 @@ const handleLogout = async () => {
 
 .title-input :deep(.el-input__wrapper) {
   box-shadow: none;
+}
+
+.auto-save-status {
+  font-size: 12px;
+  color: #909399;
+  margin-left: 12px;
+}
+
+.auto-save-status.saved {
+  color: #67c23a;
 }
 
 .editor-tags {

@@ -49,3 +49,10 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
+
+# 回收站配置
+trash:
+  # 自动清理间隔（分钟）
+  clean-interval-minutes: 5
+  # 文件保留时间（分钟）
+  retention-minutes: 5

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -30,8 +31,19 @@ public class BrowseHistoryController
         Long userId = StpUtil.getLoginIdAsLong();
         // 获取历史浏览记录并查询标题添加到实体类然后返回给前端
         List<BrowseHistory> historyList = browseHistoryService.getHistoryList(userId, limit)
-                .stream().peek(history ->
-                        history.setNoteTitle(noteService.getById(history.getNoteId()).getTitle())).collect(Collectors.toList());
+                .stream()
+                .map(history ->
+                {
+                    var note = noteService.getById(history.getNoteId());
+                    if (note != null)
+                    {
+                        history.setNoteTitle(note.getTitle());
+                        return history;
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull) // 过滤掉已经被删除了的
+                .collect(Collectors.toList());
         return Result.ok(historyList);
     }
 
