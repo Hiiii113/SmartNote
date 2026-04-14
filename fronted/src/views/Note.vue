@@ -22,6 +22,14 @@
       </el-dropdown>
     </header>
 
+    <!-- AI 助手入口 -->
+    <div class="ai-bar">
+      <div class="ai-input-wrapper" @click="openAiAssistant">
+        <el-icon class="ai-icon"><Promotion /></el-icon>
+        <span class="ai-placeholder">AI 助手 - 有问题尽管问我</span>
+      </div>
+    </div>
+
     <div class="main">
       <!-- 左侧导航栏 -->
       <aside class="sidebar">
@@ -381,6 +389,35 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- AI 助手弹窗 -->
+    <el-dialog v-model="aiAssistantVisible" title="AI 助手" width="600px" class="ai-assistant-dialog">
+      <div class="ai-assistant-content">
+        <div class="ai-chat-messages">
+          <div v-if="aiMessages.length === 0" class="ai-welcome">
+            <el-icon :size="48" color="#409eff"><Promotion /></el-icon>
+            <p>你好！我是 AI 助手，有什么可以帮助你的吗？</p>
+          </div>
+          <div v-for="(msg, index) in aiMessages" :key="index" class="ai-message" :class="msg.role">
+            <!-- 流式输出中用普通文本，完成后用 MdPreview -->
+            <div v-if="msg.streaming" class="message-content streaming">{{ msg.content }}</div>
+            <MdPreview v-else :model-value="msg.content" class="message-content" />
+          </div>
+        </div>
+        <div class="ai-input-area">
+          <el-input
+            v-model="aiInput"
+            placeholder="输入你的问题..."
+            @keyup.enter="sendAiMessage"
+            :disabled="aiStreaming"
+          >
+            <template #append>
+              <el-button :icon="Promotion" @click="sendAiMessage" :loading="aiStreaming" />
+            </template>
+          </el-input>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -400,6 +437,7 @@ import {
   Lock,
   Notebook,
   Plus,
+  Promotion,
   SwitchButton,
   User
 } from '@element-plus/icons-vue'
@@ -503,6 +541,84 @@ const aiLoading = ref(false)
 const aiGenerating = ref(false)
 const aiResult = ref('')
 const aiDialogVisible = ref(false)
+
+// AI 助手
+const aiAssistantVisible = ref(false)
+const aiInput = ref('')
+const aiMessages = ref([])
+const aiStreaming = ref(false)  // 是否正在流式输出
+
+// 打开 AI 助手
+const openAiAssistant = () => {
+  aiAssistantVisible.value = true
+}
+
+// 发送消息给 AI（SSE 流式输出）
+const sendAiMessage = async () => {
+  if (!aiInput.value.trim() || aiStreaming.value) return
+
+  const userInput = aiInput.value
+  aiInput.value = ''
+
+  // 添加用户消息
+  aiMessages.value.push({
+    role: 'user',
+    content: userInput
+  })
+
+  // 添加一个空的助手消息，流式填充
+  aiMessages.value.push({
+    role: 'assistant',
+    content: '',
+    streaming: true  // 标记正在流式输出
+  })
+  const assistantIndex = aiMessages.value.length - 1
+
+  aiStreaming.value = true
+
+  try {
+    const response = await fetch('http://localhost:8081/ai/chat/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'satoken': localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        message: userInput
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error('请求失败')
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      // 解析 SSE 格式：去掉 "data:" 前缀
+      const lines = chunk.split('\n')
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          aiMessages.value[assistantIndex].content += line.slice(5)
+        }
+      }
+    }
+
+    // 流式输出完成，标记为非流式，后续用 MdPreview 渲染
+    aiMessages.value[assistantIndex].streaming = false
+  } catch (err) {
+    aiMessages.value[assistantIndex].content = '抱歉，发生了错误，请稍后重试。'
+    aiMessages.value[assistantIndex].streaming = false
+    console.error('AI 聊天错误:', err)
+  } finally {
+    aiStreaming.value = false
+  }
+}
 
 // 右键菜单
 const contextMenuVisible = ref(false)
@@ -1216,6 +1332,41 @@ const handleLogout = async () => {
   color: #303133;
 }
 
+/* AI 助手入口栏 */
+.ai-bar {
+  background: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  padding: 10px 20px;
+}
+
+.ai-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ff 100%);
+  border: 1px solid #d9ecff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.ai-input-wrapper:hover {
+  background: linear-gradient(135deg, #e8f4ff 0%, #d9ecff 100%);
+  border-color: #409eff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.ai-icon {
+  font-size: 20px;
+  color: #409eff;
+}
+
+.ai-placeholder {
+  font-size: 14px;
+  color: #606266;
+}
+
 /* 主体区域 */
 .main {
   flex: 1;
@@ -1569,5 +1720,79 @@ const handleLogout = async () => {
   flex-direction: column;
   align-items: center;
   padding: 20px;
+}
+
+/* AI 助手弹窗 */
+.ai-assistant-content {
+  display: flex;
+  flex-direction: column;
+  height: 450px;
+}
+
+.ai-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+}
+
+.ai-welcome p {
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.ai-message {
+  margin-bottom: 12px;
+}
+
+.ai-message.user {
+  text-align: right;
+}
+
+.ai-message.user .message-content {
+  background: #409eff;
+  color: #fff;
+}
+
+.ai-message.assistant .message-content {
+  background: #fff;
+  color: #303133;
+}
+
+.message-content {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  max-width: 80%;
+  word-break: break-word;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+/* 流式输出样式 */
+.message-content.streaming {
+  white-space: pre-wrap;
+}
+
+/* MdPreview 样式覆盖 */
+.ai-message.assistant .message-content :deep(.md-preview) {
+  background: transparent;
+  padding: 0;
+}
+
+.ai-input-area {
+  flex-shrink: 0;
 }
 </style>

@@ -3,7 +3,10 @@
     <!-- 顶部导航栏 -->
     <header class="header">
       <div class="logo">SmartNote</div>
-      <el-button type="primary" @click="router.push('/note')">返回笔记</el-button>
+      <div class="nav-btns">
+        <el-button type="primary" @click="router.push('/chat')">聊天</el-button>
+        <el-button @click="router.push('/note')">返回笔记</el-button>
+      </div>
     </header>
 
     <div class="main">
