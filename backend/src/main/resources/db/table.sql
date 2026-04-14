@@ -125,3 +125,18 @@ CREATE TABLE `ai_summary`
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近一次总结的时间',
     UNIQUE KEY `uk_note_id` (`note_id`) -- 一篇笔记只能有一个索引
 ) COMMENT 'ai总结表';
+
+-- 好友私聊表
+CREATE TABLE `chat_msg`
+(
+    `id`         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    `from_id`    BIGINT       NOT NULL COMMENT '发送者 id',
+    `to_id`      BIGINT       NOT NULL COMMENT '接收者 id',
+    `content`    VARCHAR(2000) NULL COMMENT '聊天内容',
+    `msg_type`   TINYINT      DEFAULT 1 COMMENT '内容类型：1-文字 2-图片',
+    `is_read`    TINYINT      DEFAULT 0 COMMENT '是否已读：0-未读 1-已读',
+    `created_at` DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX `idx_from_id` (`from_id`),
+    INDEX `idx_to_id` (`to_id`),
+    INDEX `idx_conversation` (`from_id`, `to_id`, `created_at`)
+) COMMENT '好友私聊表';
