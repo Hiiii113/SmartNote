@@ -3,6 +3,7 @@ package hiiii113.smartnote.controller;
 import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.dto.CreateFolderDto;
 import hiiii113.smartnote.dto.RenameFolderDto;
+import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.FolderService;
 import hiiii113.smartnote.utils.Result;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class FolderController
 
     // 创建文件夹
     @PostMapping
+    @LogAnnotation(module = "文件夹", operator = "创建文件夹")
     public Result<Void> createFolder(@RequestBody CreateFolderDto dto)
     {
         // 获取用户 id
@@ -31,6 +33,7 @@ public class FolderController
 
     // 重命名文件夹
     @PutMapping("/{folderId}")
+    @LogAnnotation(module = "文件夹", operator = "重命名文件夹")
     public Result<Void> renameFolder(@PathVariable Long folderId, @RequestBody RenameFolderDto dto)
     {
         // 获取用户 id
@@ -42,6 +45,7 @@ public class FolderController
 
     // 删除文件夹（逻辑删除，设置字段 is_deleted = 1）
     @DeleteMapping("/{folderId}")
+    @LogAnnotation(module = "文件夹", operator = "删除文件夹")
     public Result<Void> deleteFolder(@PathVariable Long folderId)
     {
         // 获取用户 id
@@ -53,6 +57,7 @@ public class FolderController
 
     // 恢复文件夹
     @PostMapping("/{folderId}/restore")
+    @LogAnnotation(module = "文件夹", operator = "恢复文件夹")
     public Result<Void> restoreFolder(@PathVariable Long folderId)
     {
         // 获取用户 id
@@ -64,6 +69,7 @@ public class FolderController
 
     // 永久删除文件夹（物理删除）
     @DeleteMapping("/{folderId}/permanent")
+    @LogAnnotation(module = "文件夹", operator = "永久删除文件夹")
     public Result<Void> permanentDelete(@PathVariable Long folderId)
     {
         // 获取用户 id

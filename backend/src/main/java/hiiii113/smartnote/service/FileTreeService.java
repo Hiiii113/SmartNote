@@ -17,4 +17,7 @@ public interface FileTreeService
 
     // 获取回收站根目录节点
     List<FileTreeNodeDto> getTrashRootNodes(Long userId);
+
+    // 搜索节点
+    List<FileTreeNodeDto> searchNodes(Long userId, String keyword);
 }

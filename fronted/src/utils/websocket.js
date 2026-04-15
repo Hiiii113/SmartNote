@@ -11,6 +11,7 @@ class WebSocketClient {
     this.reconnectTimer = null
     this.messageHandler = null
     this.isConnecting = false
+    this.shouldReconnect = true // 是否应该重连
   }
 
   // 连接
@@ -26,6 +27,7 @@ class WebSocketClient {
     }
 
     this.isConnecting = true
+    this.shouldReconnect = true // 连接时启用重连
     const url = `${this.url}?token=${token}`
 
     try {
@@ -53,7 +55,10 @@ class WebSocketClient {
         console.log('WebSocket 连接关闭')
         this.isConnecting = false
         this.stopHeartbeat()
-        this.reconnect(token)
+        // 只有在应该重连时才重连
+        if (this.shouldReconnect) {
+          this.reconnect(token)
+        }
       }
 
       this.ws.onerror = (error) => {
@@ -63,12 +68,15 @@ class WebSocketClient {
     } catch (error) {
       console.error('WebSocket 连接失败:', error)
       this.isConnecting = false
-      this.reconnect(token)
+      if (this.shouldReconnect) {
+        this.reconnect(token)
+      }
     }
   }
 
   // 断开连接
   disconnect() {
+    this.shouldReconnect = false // 断开时禁用重连
     this.stopHeartbeat()
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)

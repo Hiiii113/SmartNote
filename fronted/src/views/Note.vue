@@ -74,7 +74,42 @@
               </template>
             </el-dropdown>
           </div>
+          <!-- 搜索框 -->
+          <div class="search-box">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索笔记、文件夹或标签"
+              clearable
+              @input="handleSearch"
+              @clear="handleClearSearch"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </div>
+          <!-- 搜索结果列表（扁平显示） -->
+          <div v-if="isSearching && searchResults.length > 0" class="search-results">
+            <div
+              v-for="item in searchResults"
+              :key="item.id"
+              class="search-result-item"
+              @click="handleSearchResultClick(item)"
+            >
+              <el-icon v-if="item.type === 'FOLDER'" class="folder-icon">
+                <Folder/>
+              </el-icon>
+              <el-icon v-else class="note-icon">
+                <Document/>
+              </el-icon>
+              <span class="result-name">{{ item.name }}</span>
+              <span v-if="item.tags" class="result-tags">{{ item.tags }}</span>
+            </div>
+          </div>
+          <el-empty v-else-if="isSearching && searchResults.length === 0" description="未找到匹配结果" :image-size="60"/>
+          <!-- 正常树形列表 -->
           <el-tree
+            v-else
             ref="noteTreeRef"
             :data="noteTreeData"
             :props="treeProps"
@@ -393,6 +428,12 @@
     <!-- AI 助手弹窗 -->
     <el-dialog v-model="aiAssistantVisible" title="AI 助手" width="600px" class="ai-assistant-dialog">
       <div class="ai-assistant-content">
+        <div class="ai-chat-header">
+          <el-button type="primary" text size="small" @click="startNewConversation" :disabled="aiStreaming">
+            <el-icon><Plus /></el-icon>
+            新对话
+          </el-button>
+        </div>
         <div class="ai-chat-messages">
           <div v-if="aiMessages.length === 0" class="ai-welcome">
             <el-icon :size="48" color="#409eff"><Promotion /></el-icon>
@@ -438,6 +479,7 @@ import {
   Notebook,
   Plus,
   Promotion,
+  Search,
   SwitchButton,
   User
 } from '@element-plus/icons-vue'
@@ -482,6 +524,12 @@ const trashTreeData = ref([])
 
 // 浏览历史列表
 const historyList = ref([])
+
+// 搜索相关
+const searchKeyword = ref('')
+const searchResults = ref([])
+const isSearching = ref(false)
+let searchTimer = null
 
 // 新建笔记弹窗
 const createNoteDialogVisible = ref(false)
@@ -547,15 +595,27 @@ const aiAssistantVisible = ref(false)
 const aiInput = ref('')
 const aiMessages = ref([])
 const aiStreaming = ref(false)  // 是否正在流式输出
+const aiConversationId = ref('')  // 会话ID，用于上下文记忆
 
 // 打开 AI 助手
 const openAiAssistant = () => {
   aiAssistantVisible.value = true
 }
 
-// 发送消息给 AI（SSE 流式输出）
+// 新建对话
+const startNewConversation = () => {
+  aiConversationId.value = crypto.randomUUID()
+  aiMessages.value = []
+}
+
+// 发送消息给 AI（非流式）
 const sendAiMessage = async () => {
   if (!aiInput.value.trim() || aiStreaming.value) return
+
+  // 如果没有会话ID，生成一个
+  if (!aiConversationId.value) {
+    aiConversationId.value = crypto.randomUUID()
+  }
 
   const userInput = aiInput.value
   aiInput.value = ''
@@ -566,11 +626,11 @@ const sendAiMessage = async () => {
     content: userInput
   })
 
-  // 添加一个空的助手消息，流式填充
+  // 添加一个加载中的助手消息
   aiMessages.value.push({
     role: 'assistant',
     content: '',
-    streaming: true  // 标记正在流式输出
+    streaming: true
   })
   const assistantIndex = aiMessages.value.length - 1
 
@@ -584,7 +644,8 @@ const sendAiMessage = async () => {
         'satoken': localStorage.getItem('token')
       },
       body: JSON.stringify({
-        message: userInput
+        message: userInput,
+        conversationId: aiConversationId.value
       })
     })
 
@@ -592,24 +653,11 @@ const sendAiMessage = async () => {
       throw new Error('请求失败')
     }
 
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
+    // 非流式响应，直接读取完整内容
+    const data = await response.json()
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value, { stream: true })
-      // 解析 SSE 格式：去掉 "data:" 前缀
-      const lines = chunk.split('\n')
-      for (const line of lines) {
-        if (line.startsWith('data:')) {
-          aiMessages.value[assistantIndex].content += line.slice(5)
-        }
-      }
-    }
-
-    // 流式输出完成，标记为非流式，后续用 MdPreview 渲染
+    // 更新助手消息
+    aiMessages.value[assistantIndex].content = data.data || '抱歉，AI 响应异常。'
     aiMessages.value[assistantIndex].streaming = false
   } catch (err) {
     aiMessages.value[assistantIndex].content = '抱歉，发生了错误，请稍后重试。'
@@ -658,6 +706,43 @@ const fetchHistoryList = async () => {
     historyList.value = res.data || []
   } catch (err) {
     console.error('获取浏览历史失败:', err)
+  }
+}
+
+// 搜索处理（防抖）
+const handleSearch = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    if (!searchKeyword.value.trim()) {
+      isSearching.value = false
+      searchResults.value = []
+      return
+    }
+    try {
+      const res = await get('/nodes/search', { keyword: searchKeyword.value.trim() })
+      searchResults.value = res.data || []
+      isSearching.value = true
+    } catch (err) {
+      console.error('搜索失败:', err)
+      searchResults.value = []
+    }
+  }, 300)
+}
+
+// 清除搜索
+const handleClearSearch = () => {
+  searchKeyword.value = ''
+  searchResults.value = []
+  isSearching.value = false
+}
+
+// 点击搜索结果
+const handleSearchResultClick = (item) => {
+  if (item.type === 'NOTE') {
+    router.push(`/note/${item.id}`)
+  } else {
+    // 文件夹：展开到该文件夹
+    ElMessage.info('请从左侧目录树进入文件夹')
   }
 }
 
@@ -727,7 +812,7 @@ const hideContextMenu = () => {
 // 菜单切换
 const handleMenuSelect = (index) => {
   if (index === 'friends') {
-    router.push('/friends')
+    router.push('/chat')
     return
   }
   activeMenu.value = index
@@ -1444,6 +1529,50 @@ const handleLogout = async () => {
   font-weight: 500;
 }
 
+.search-box {
+  margin-bottom: 10px;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.search-result-item:hover {
+  background: #f5f7fa;
+}
+
+.result-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-tags {
+  font-size: 12px;
+  color: #909399;
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tree-node {
   display: flex;
   align-items: center;
@@ -1727,6 +1856,12 @@ const handleLogout = async () => {
   display: flex;
   flex-direction: column;
   height: 450px;
+}
+
+.ai-chat-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
 }
 
 .ai-chat-messages {

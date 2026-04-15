@@ -140,3 +140,37 @@ CREATE TABLE `chat_msg`
     INDEX `idx_to_id` (`to_id`),
     INDEX `idx_conversation` (`from_id`, `to_id`, `created_at`)
 ) COMMENT '好友私聊表';
+
+-- AI对话记录表
+CREATE TABLE `ai_conversation`
+(
+    `id`              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    `user_id`         BIGINT       NOT NULL COMMENT '用户ID',
+    `conversation_id` VARCHAR(50)  NOT NULL COMMENT '会话ID，用于区分不同对话',
+    `role`            VARCHAR(20)  NOT NULL COMMENT '角色：user-用户 / assistant-AI',
+    `content`         TEXT         NOT NULL COMMENT '对话内容',
+    `created_at`      DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_conversation_id` (`conversation_id`),
+    INDEX `idx_user_conversation` (`user_id`, `conversation_id`, `created_at`)
+) COMMENT 'AI对话记录表';
+
+-- 日志表
+CREATE TABLE `sys_operation_log`
+(
+    id             int          NOT NULL AUTO_INCREMENT COMMENT '日志ID（自增主键）',
+    user_number    varchar(50)  NOT NULL COMMENT '操作用户',
+    operation_time datetime     NOT NULL COMMENT '操作时间',
+    module         varchar(100) NOT NULL COMMENT '操作模块（如：用户管理）',
+    operator       varchar(255)          DEFAULT NULL COMMENT '操作描述（如：新增用户）',
+    method         varchar(255) NOT NULL COMMENT '操作方法全路径',
+    params         text COMMENT '方法参数（JSON格式）',
+    result         text COMMENT '操作结果（成功/失败，JSON格式）',
+    exception      text COMMENT '异常信息（失败时记录）',
+    cost_time      bigint                DEFAULT NULL COMMENT '操作耗时（毫秒）',
+    client_ip      varchar(50)           DEFAULT NULL COMMENT '客户端IP',
+    create_time    datetime     not null default current_timestamp comment '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_operation_time (operation_time) COMMENT '按操作时间查询索引',
+    KEY idx_username (user_number) COMMENT '按用户查询索引'
+) COMMENT ='系统操作日志表';

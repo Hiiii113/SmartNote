@@ -10,27 +10,26 @@ const router = createRouter({
     {
       path: '/',
       name: 'Login',
-      component: Login,
+      component: Login, // 登录（默认界面）
     },
     {
       path: '/note',
       name: 'Note',
-      component: Note,
+      component: Note, // 笔记界面
     },
     {
       path: '/note/:id',
       name: 'NoteDetail',
-      component: Note,
+      component: Note, // 根据笔记 id 进入对应笔记界面
     },
     {
       path: '/friends',
-      name: 'Friends',
-      component: Friends,
+      redirect: '/chat' // 聊天界面
     },
     {
       path: '/chat',
       name: 'Chat',
-      component: Chat,
+      component: Chat, // 聊天界面
     },
   ],
 })

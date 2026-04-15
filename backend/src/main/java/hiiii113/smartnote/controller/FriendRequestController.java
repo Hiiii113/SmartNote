@@ -6,6 +6,7 @@ import hiiii113.smartnote.dto.HandleFriendRequestDto;
 import hiiii113.smartnote.dto.SendFriendRequestDto;
 import hiiii113.smartnote.entity.FriendRequest;
 import hiiii113.smartnote.entity.User;
+import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.FriendRequestService;
 import hiiii113.smartnote.service.UserService;
 import hiiii113.smartnote.utils.Result;
@@ -28,6 +29,7 @@ public class FriendRequestController
 
     // 发送好友申请
     @PostMapping
+    @LogAnnotation(module = "好友申请", operator = "发送好友申请")
     public Result<Void> sendRequest(@RequestBody SendFriendRequestDto dto)
     {
         // 获取发送请求的用户 id
@@ -53,6 +55,7 @@ public class FriendRequestController
 
     // 获取收到的好友申请列表
     @GetMapping("/received")
+    @LogAnnotation(module = "好友申请", operator = "获取收到的好友申请")
     public Result<List<FriendRequestDto>> getReceivedRequests()
     {
         // 获取用户 id
@@ -68,6 +71,7 @@ public class FriendRequestController
 
     // 获取发出的好友申请列表
     @GetMapping("/sent")
+    @LogAnnotation(module = "好友申请", operator = "获取发出的好友申请")
     public Result<List<FriendRequestDto>> getSentRequests()
     {
         // 获取用户 id
@@ -83,6 +87,7 @@ public class FriendRequestController
 
     // 处理好友申请
     @PutMapping("/{requestId}")
+    @LogAnnotation(module = "好友申请", operator = "处理好友申请")
     public Result<Void> handleRequest(@PathVariable Long requestId, @RequestBody HandleFriendRequestDto dto)
     {
         // 获取用户 id

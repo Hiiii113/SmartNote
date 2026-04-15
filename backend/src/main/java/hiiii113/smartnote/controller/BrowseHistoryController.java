@@ -2,6 +2,7 @@ package hiiii113.smartnote.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.entity.BrowseHistory;
+import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.BrowseHistoryService;
 import hiiii113.smartnote.service.NoteService;
 import hiiii113.smartnote.utils.Result;
@@ -25,6 +26,7 @@ public class BrowseHistoryController
 
     // 获取浏览历史列表
     @GetMapping
+    @LogAnnotation(module = "浏览历史", operator = "获取浏览历史")
     public Result<List<BrowseHistory>> getHistoryList(@RequestParam(required = false) Integer limit)
     {
         // 获取用户 id
@@ -49,6 +51,7 @@ public class BrowseHistoryController
 
     // 删除单条浏览记录
     @DeleteMapping("/{noteId}")
+    @LogAnnotation(module = "浏览历史", operator = "删除浏览记录")
     public Result<Void> deleteHistory(@PathVariable Long noteId)
     {
         // 获取用户 id
@@ -60,6 +63,7 @@ public class BrowseHistoryController
 
     // 清空浏览历史
     @DeleteMapping
+    @LogAnnotation(module = "浏览历史", operator = "清空浏览历史")
     public Result<Void> clearHistory()
     {
         // 获取用户 id

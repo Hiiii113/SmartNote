@@ -7,6 +7,7 @@ import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.entity.NotePermission;
 import hiiii113.smartnote.entity.User;
 import hiiii113.smartnote.exception.BusinessException;
+import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.NotePermissionService;
 import hiiii113.smartnote.service.NoteService;
 import hiiii113.smartnote.service.UserService;
@@ -31,6 +32,7 @@ public class NotePermissionController
 
     // 获取笔记的权限列表（前端查看并操作）
     @GetMapping
+    @LogAnnotation(module = "笔记权限", operator = "获取权限列表")
     public Result<List<NotePermissionDto>> getPermissions(@PathVariable Long noteId)
     {
         // 获取用户 id
@@ -49,6 +51,7 @@ public class NotePermissionController
 
     // 设置用户权限
     @PostMapping
+    @LogAnnotation(module = "笔记权限", operator = "设置权限")
     public Result<Void> setPermission(@PathVariable Long noteId, @RequestBody SetPermissionDto dto)
     {
         // 获取用户 id
@@ -63,6 +66,7 @@ public class NotePermissionController
 
     // 删除用户权限
     @DeleteMapping("/{targetUserId}")
+    @LogAnnotation(module = "笔记权限", operator = "删除权限")
     public Result<Void> removePermission(@PathVariable Long noteId, @PathVariable Long targetUserId)
     {
         // 获取用户 id

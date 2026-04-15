@@ -1,7 +1,7 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { get, post } from '@/utils/request.js'
-import { wsClient } from '@/utils/websocket.js'
+import {defineStore} from 'pinia'
+import {ref} from 'vue'
+import {get, post} from '@/utils/request.js'
+import {wsClient} from '@/utils/websocket.js'
 
 export const useChatStore = defineStore('chat', () => {
   // 当前聊天的好友

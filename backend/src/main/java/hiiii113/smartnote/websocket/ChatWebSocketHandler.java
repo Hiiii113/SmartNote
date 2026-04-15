@@ -1,9 +1,7 @@
 package hiiii113.smartnote.websocket;
 
-import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hiiii113.smartnote.dto.ChatMessageDto;
-import hiiii113.smartnote.entity.ChatMsg;
 import hiiii113.smartnote.service.ChatMsgService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,11 +34,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler
     public void afterConnectionEstablished(@NonNull WebSocketSession session)
     {
         Long userId = getUserId(session);
-        if (userId != null)
-        {
-            userSessions.put(userId, session);
-            log.info("用户 {} 连接成功，当前在线人数: {}", userId, userSessions.size());
-        }
+        userSessions.put(userId, session);
+        log.info("用户 {} 连接成功，当前在线人数: {}", userId, userSessions.size());
     }
 
     // 收到消息
@@ -48,19 +43,30 @@ public class ChatWebSocketHandler extends TextWebSocketHandler
     protected void handleTextMessage(@NonNull WebSocketSession session, TextMessage message) throws Exception
     {
         String payload = message.getPayload();
-        log.info("收到消息: {}", payload);
 
+        // 心跳消息直接忽略
+        if (payload.contains("\"type\":\"heartbeat\""))
+        {
+            return;
+        }
+
+        // 解析聊天消息
         ChatMessageDto dto = objectMapper.readValue(payload, ChatMessageDto.class);
 
-        ChatMsg chatMsg = new ChatMsg();
-        chatMsg.setFromId(dto.getFromId());
-        chatMsg.setToId(dto.getToId());
-        chatMsg.setContent(dto.getContent());
-        chatMsg.setMsgType(dto.getMsgType() != null ? dto.getMsgType() : 1);
-        chatMsg.setIsRead(0);
-        chatMsgService.save(chatMsg);
+        // 验证字段
+        if (dto.getToId() == null || dto.getContent() == null)
+        {
+            return;
+        }
 
-        pushMessage(dto.getToId(), payload);
+        // 获取发送者 ID
+        Long fromId = getUserId(session);
+
+        // 保存消息
+        chatMsgService.saveChatMsg(dto, fromId);
+
+        // 推送给对方（如果在线）
+        pushMessage(dto.getToId(), dto);
     }
 
     // 连接关闭
@@ -68,28 +74,29 @@ public class ChatWebSocketHandler extends TextWebSocketHandler
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status)
     {
         Long userId = getUserId(session);
-        if (userId != null)
-        {
-            userSessions.remove(userId);
-            log.info("用户 {} 断开连接，当前在线人数: {}", userId, userSessions.size());
-        }
+        userSessions.remove(userId);
+        log.info("用户 {} 断开连接，当前在线人数: {}", userId, userSessions.size());
     }
 
-    // 推送消息
-    public void pushMessage(Long userId, String message)
+    // 推送消息（如果对方在线）
+    public void pushMessage(Long toId, ChatMessageDto dto)
     {
-        WebSocketSession session = userSessions.get(userId);
-        if (session != null && session.isOpen())
+        WebSocketSession session = userSessions.get(toId);
+        if (session == null || !session.isOpen())
         {
-            try
-            {
-                session.sendMessage(new TextMessage(message));
-                log.info("消息已推送给用户 {}", userId);
-            }
-            catch (Exception e)
-            {
-                log.error("推送消息失败: {}", e.getMessage());
-            }
+            log.debug("用户 {} 不在线，不推送", toId);
+            return;
+        }
+
+        try
+        {
+            String json = objectMapper.writeValueAsString(dto);
+            session.sendMessage(new TextMessage(json));
+            log.info("消息已推送给用户 {}", toId);
+        }
+        catch (Exception e)
+        {
+            log.error("推送消息失败: {}", e.getMessage());
         }
     }
 
@@ -100,20 +107,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler
         return session != null && session.isOpen();
     }
 
-    // 从 session 获取用户 ID
+    // 从 session attributes 获取用户 ID
     private Long getUserId(WebSocketSession session)
     {
-        try
-        {
-            String query = session.getUri().getQuery();
-            if (query == null) return null;
-            String token = query.replace("token=", "");
-            return Long.parseLong(StpUtil.getLoginIdByToken(token).toString());
-        }
-        catch (Exception e)
-        {
-            log.error("解析 token 失败: {}", e.getMessage());
-            return null;
-        }
+        Object userId = session.getAttributes().get(WsAuthInterceptor.USER_ID_KEY);
+        return userId != null ? (Long) userId : null;
     }
 }

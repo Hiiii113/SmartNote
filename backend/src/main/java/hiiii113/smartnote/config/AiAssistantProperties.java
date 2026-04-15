@@ -8,6 +8,7 @@ import java.util.Map;
 
 /**
  * AI 助手配置属性
+ * 和 application.yml 里面的 prompt 绑定，提供获取功能
  */
 @Data
 @Component

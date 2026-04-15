@@ -13,4 +13,7 @@ public class AiChatDto
 
     // 笔记 ID（可选，用于笔记总结）
     private Long noteId;
+
+    // 会话 ID（前端传入，用于加载历史上下文）
+    private String conversationId;
 }

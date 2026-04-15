@@ -3,6 +3,7 @@ package hiiii113.smartnote.controller;
 import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.dto.*;
 import hiiii113.smartnote.entity.User;
+import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.UserService;
 import hiiii113.smartnote.utils.Result;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ public class UserController
 
     // 登录
     @PostMapping("/login")
+    @LogAnnotation(module = "用户", operator = "登录")
     public Result<String> login(@Valid @RequestBody LoginDto dto)
     {
         // 调用 service 层代码
@@ -35,6 +37,7 @@ public class UserController
 
     // 注册
     @PostMapping
+    @LogAnnotation(module = "用户", operator = "注册")
     public Result<Void> register(@Valid @RequestBody RegisterDto dto)
     {
         userService.register(dto);
@@ -43,6 +46,7 @@ public class UserController
 
     // 登出
     @GetMapping("/logout")
+    @LogAnnotation(module = "用户", operator = "登出")
     public Result<Void> logout()
     {
         // 清除 Token
@@ -53,6 +57,7 @@ public class UserController
 
     // 获取用户信息
     @GetMapping("/info")
+    @LogAnnotation(module = "用户", operator = "获取用户信息")
     public Result<User> getUserInfo()
     {
         // 获取用户 id
@@ -64,6 +69,7 @@ public class UserController
 
     // 修改用户名
     @PutMapping("/username")
+    @LogAnnotation(module = "用户", operator = "修改用户名")
     public Result<Void> updateUsername(@RequestBody UpdateUsernameDto dto)
     {
         // 获取用户 id
@@ -75,6 +81,7 @@ public class UserController
 
     // 修改座右铭
     @PutMapping("/motto")
+    @LogAnnotation(module = "用户", operator = "修改座右铭")
     public Result<Void> updateMotto(@RequestBody UpdateMottoDto dto)
     {
         // 获取用户 id
@@ -86,6 +93,7 @@ public class UserController
 
     // 修改密码
     @PutMapping("/password")
+    @LogAnnotation(module = "用户", operator = "修改密码")
     public Result<Void> updatePassword(@Valid @RequestBody UpdatePasswordDto dto)
     {
         // 获取用户 id
@@ -97,6 +105,7 @@ public class UserController
 
     // 修改头像
     @PostMapping("/avatar")
+    @LogAnnotation(module = "用户", operator = "修改头像")
     public Result<Void> updateAvatar(@RequestParam("file") MultipartFile file)
     {
         // 获取用户 id

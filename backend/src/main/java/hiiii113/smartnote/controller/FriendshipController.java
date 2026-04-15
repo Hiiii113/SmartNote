@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.dto.FriendDto;
 import hiiii113.smartnote.entity.Friendship;
 import hiiii113.smartnote.entity.User;
+import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.FriendshipService;
 import hiiii113.smartnote.service.UserService;
 import hiiii113.smartnote.utils.Result;
@@ -26,6 +27,7 @@ public class FriendshipController
 
     // 获取好友列表
     @GetMapping
+    @LogAnnotation(module = "好友", operator = "获取好友列表")
     public Result<List<FriendDto>> getFriendList()
     {
         // 获取用户 id
@@ -41,6 +43,7 @@ public class FriendshipController
 
     // 删除好友
     @DeleteMapping("/{friendId}")
+    @LogAnnotation(module = "好友", operator = "删除好友")
     public Result<Void> deleteFriend(@PathVariable Long friendId)
     {
         // 获取用户 id

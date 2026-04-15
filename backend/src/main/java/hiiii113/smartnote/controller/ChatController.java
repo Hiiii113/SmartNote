@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import hiiii113.smartnote.dto.ChatMessageDto;
 import hiiii113.smartnote.entity.ChatMsg;
+import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.ChatMsgService;
 import hiiii113.smartnote.utils.Result;
 import hiiii113.smartnote.websocket.ChatWebSocketHandler;
@@ -25,39 +26,34 @@ public class ChatController
 
     // 发送消息
     @PostMapping("/send")
+    @LogAnnotation(module = "聊天", operator = "发送消息")
     public Result<Void> sendMessage(@RequestBody ChatMessageDto dto)
     {
-        // 获取当前用户 ID
         Long fromId = StpUtil.getLoginIdAsLong();
 
         // 保存消息
-        ChatMsg chatMsg = new ChatMsg();
-        chatMsg.setFromId(fromId);
-        chatMsg.setToId(dto.getToId());
-        chatMsg.setContent(dto.getContent());
-        chatMsg.setMsgType(dto.getMsgType() != null ? dto.getMsgType() : 1);
-        chatMsg.setIsRead(0);
-        chatMsgService.save(chatMsg);
+        chatMsgService.saveChatMsg(dto, fromId);
 
-        // 如果对方在线，推送消息
-        if (webSocketHandler.isOnline(dto.getToId()))
-        {
-            webSocketHandler.pushMessage(dto.getToId(), "{\"fromId\":" + fromId
-                    + ",\"toId\":" + dto.getToId()
-                    + ",\"content\":\"" + dto.getContent() + "\""
-                    + ",\"msgType\":" + chatMsg.getMsgType() + "}");
-        }
+        // 构建推送消息
+        ChatMessageDto pushDto = new ChatMessageDto();
+        pushDto.setFromId(fromId);
+        pushDto.setToId(dto.getToId());
+        pushDto.setContent(dto.getContent());
+        pushDto.setMsgType(dto.getMsgType() != null ? dto.getMsgType() : 1);
+
+        // 推送给对方
+        webSocketHandler.pushMessage(dto.getToId(), pushDto);
 
         return Result.ok();
     }
 
     // 获取聊天记录
     @GetMapping("/history/{friendId}")
+    @LogAnnotation(module = "聊天", operator = "获取聊天记录")
     public Result<List<ChatMsg>> getHistory(@PathVariable Long friendId)
     {
         Long userId = StpUtil.getLoginIdAsLong();
 
-        // 查询双方的聊天记录
         LambdaQueryWrapper<ChatMsg> wrapper = new LambdaQueryWrapper<>();
         wrapper.and(w -> w
                 .and(w1 -> w1.eq(ChatMsg::getFromId, userId).eq(ChatMsg::getToId, friendId))
@@ -70,6 +66,7 @@ public class ChatController
 
     // 获取未读消息数
     @GetMapping("/unread")
+    @LogAnnotation(module = "聊天", operator = "获取未读消息数")
     public Result<Integer> getUnreadCount()
     {
         Long userId = StpUtil.getLoginIdAsLong();
@@ -84,6 +81,7 @@ public class ChatController
 
     // 标记已读
     @PostMapping("/read/{friendId}")
+    @LogAnnotation(module = "聊天", operator = "标记已读")
     public Result<Void> markAsRead(@PathVariable Long friendId)
     {
         Long userId = StpUtil.getLoginIdAsLong();

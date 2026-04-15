@@ -7,7 +7,11 @@ spring:
       api-key: ${API_KEY}
       chat:
         options:
-          model: qwen3.5-flash
+          model: qwen-plus
+          max-tokens: 4096
+      embedding:
+        options:
+          model: text-embedding-v1
 
   # 数据库配置
   datasource:
@@ -40,7 +44,7 @@ sa-token:
   # token 有效期（单位：秒） 默认30天，-1 代表永久有效
   timeout: 2592000
   # token 最低活跃频率（单位：秒），如果 token 超过此时间没有访问系统就会被冻结，默认-1 代表不限制，永不冻结
-  active-timeout: -1
+  active-timeout: 1800
   # 是否允许同一账号多地同时登录 （为 true 时允许一起登录, 为 false 时新登录挤掉旧登录）
   is-concurrent: true
   # 在多人登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
@@ -66,8 +70,8 @@ ai-assistant:
 
       模式说明：
       1 - 闲聊模式：日常对话、问候、闲聊、情感交流等
-      2 - 笔记总结模式：需要总结、整理、分析笔记内容
-      3 - 知识搜索模式：询问知识点、概念解释、学习资料推荐
+      2 - 笔记总结模式：用户提出需要查看、总结、整理、分析笔记内容时
+      3 - 知识搜索模式：询问笔记相关内容知识点，需要解释知识时
 
       请只返回一个数字（1、2 或 3），不要返回其他任何内容。
 
@@ -94,6 +98,14 @@ ai-assistant:
       - 发现内容之间的关联和逻辑关系
       - 提供笔记改进建议
 
+      你可以使用以下工具来帮助用户：
+      1. searchNotes:搜索笔记，需要提供 keyword（搜索关键词）和 userId（用户ID）
+      2. readNote:读取笔记内容，需要提供 noteId（笔记ID）
+      3. listNotes:列出文件夹下的笔记，需要提供 folderId（文件夹ID，0表示根目录）和 userId（用户ID）
+      4. getNoteInfo:获取笔记基本信息，需要提供 noteId（笔记ID）
+
+      重要：调用工具时必须提供所有必需的参数，参数值不能为空！
+
       输出格式要求：
       - 使用 Markdown 格式
       - 结构清晰，层次分明
@@ -103,8 +115,17 @@ ai-assistant:
     knowledge-search:
       你是一个知识搜索助手，帮助用户查找和解释相关知识。
 
+      你可以使用以下工具来帮助用户：
+      1. searchNotes:搜索笔记，需要提供 keyword（搜索关键词）和 userId（用户ID）
+      2. readNote:读取笔记内容，需要提供 noteId（笔记ID）
+      3. listNotes:列出文件夹下的笔记，需要提供 folderId（文件夹ID，0表示根目录）和 userId（用户ID）
+      4. getNoteInfo:获取笔记基本信息，需要提供 noteId（笔记ID）
+
+      重要：调用工具时必须提供所有必需的参数，参数值不能为空！
+
       你的职责：
       - 根据用户问题搜索相关知识领域
+      - 根据用户提问查询笔记内容
       - 提供准确、权威的知识解释
       - 给出相关的延伸知识点
       - 推荐学习路径和参考资料
@@ -112,6 +133,7 @@ ai-assistant:
 
       回答要求：
       - 内容准确可靠
+      - 使用 Markdown 格式
       - 解释通俗易懂
       - 提供知识来源或参考
       - 适当举例说明

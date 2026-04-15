@@ -68,7 +68,40 @@ public class FileTreeServiceImpl implements FileTreeService
         return getNodes(userId, -1L, 1);
     }
 
-    // 将文件夹和笔记列表转换为 FileTreeNodeDto 列表，使用 stream
+    // 搜索节点
+    @Override
+    public List<FileTreeNodeDto> searchNodes(Long userId, String keyword)
+    {
+        if (keyword == null || keyword.trim().isEmpty())
+        {
+            return List.of();
+        }
+
+        // 去除空格啥的
+        String searchKeyword = keyword.trim();
+
+        // 搜索文件夹
+        List<Folder> folders = folderService.lambdaQuery()
+                .eq(Folder::getUserId, userId)
+                .eq(Folder::getIsDeleted, 0)
+                .like(Folder::getName, searchKeyword) // 在文件名里面搜索
+                .list();
+
+        // 搜索笔记
+        List<Note> notes = noteService.lambdaQuery()
+                .eq(Note::getUserId, userId)
+                .eq(Note::getIsDeleted, 0)
+                .and(wrapper -> wrapper // 同时搜索标题和标签
+                        .like(Note::getTitle, searchKeyword)
+                        .or()
+                        .like(Note::getTags, searchKeyword)
+                )
+                .list();
+
+        return convertToDto(folders, notes);
+    }
+
+    // 使用 stream 将文件夹和笔记列表转换为 FileTreeNodeDto 列表
     private List<FileTreeNodeDto> convertToDto(List<Folder> folders, List<Note> notes)
     {
         return Stream.concat(
@@ -79,6 +112,7 @@ public class FileTreeServiceImpl implements FileTreeService
                     dto.setName(folder.getName());
                     dto.setParentId(folder.getParentId());
                     dto.setType(FileTreeNodeTypeEnum.FOLDER);
+                    dto.setUpdatedAt(folder.getUpdatedAt());
                     return dto;
                 }),
                 notes.stream().map(note ->
@@ -88,6 +122,8 @@ public class FileTreeServiceImpl implements FileTreeService
                     dto.setName(note.getTitle());
                     dto.setParentId(note.getFolderId());
                     dto.setType(FileTreeNodeTypeEnum.NOTE);
+                    dto.setUpdatedAt(note.getUpdatedAt());
+                    dto.setTags(note.getTags());
                     return dto;
                 })
         ).collect(Collectors.toList());
