@@ -50,6 +50,10 @@
 
         <!-- 底部图标 -->
         <div class="sidebar-footer">
+          <div class="footer-item" :class="{ active: activeMenu === 'hot' }" @click="handleFooterMenuSelect('hot')">
+            <el-icon><Star/></el-icon>
+            <span>热点</span>
+          </div>
           <div class="footer-item" :class="{ active: activeMenu === 'history' }" @click="handleFooterMenuSelect('history')">
             <el-icon><Clock/></el-icon>
             <span>历史</span>
@@ -156,6 +160,27 @@
           </div>
         </div>
 
+        <!-- 热点笔记列表 -->
+        <div v-else-if="activeMenu === 'hot'" class="note-list">
+          <div class="list-header">
+            <span>热点笔记</span>
+          </div>
+          <el-empty v-if="hotNotesList.length === 0" description="暂无热点笔记"/>
+          <div v-else class="history-list">
+            <div
+              v-for="item in hotNotesList"
+              :key="item.id"
+              class="history-item"
+              @click="handleHotNoteClick(item)"
+            >
+              <div class="history-title">{{ item.title }}</div>
+              <div class="history-info">
+                <span>访问 {{ item.viewCount || 0 }} 次</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 回收站列表 -->
         <div v-else class="note-list">
           <div class="list-header">
@@ -200,6 +225,9 @@
               <el-button type="primary" :icon="Check" @click="handleSaveNote">保存</el-button>
               <span v-if="autoSaveStatus === 'saving'" class="auto-save-status">保存中...</span>
               <span v-else-if="autoSaveStatus === 'saved'" class="auto-save-status saved">已保存</span>
+              <span v-if="syncStatus === 'connected'" class="sync-status connected">协同在线</span>
+              <span v-else-if="syncStatus === 'connecting'" class="sync-status">连接中...</span>
+              <span v-else-if="syncStatus === 'disconnected'" class="sync-status disconnected">离线</span>
             </div>
           </div>
           <div class="editor-tags">
@@ -227,8 +255,11 @@
           </div>
           <MilkdownEditor
             v-model="currentNote.content"
+            :note-id="currentNote.id"
+            :read-only="!currentNote.canEdit"
             placeholder="开始编写你的笔记..."
             class="md-editor"
+            @sync-status="handleSyncStatus"
           />
         </div>
         <div v-else class="empty-content">
@@ -480,6 +511,7 @@ import {
   Plus,
   Promotion,
   Search,
+  Star,
   SwitchButton,
   User
 } from '@element-plus/icons-vue'
@@ -524,6 +556,9 @@ const trashTreeData = ref([])
 
 // 浏览历史列表
 const historyList = ref([])
+
+// 热点笔记列表
+const hotNotesList = ref([])
 
 // 搜索相关
 const searchKeyword = ref('')
@@ -709,6 +744,16 @@ const fetchHistoryList = async () => {
   }
 }
 
+// 获取热点笔记
+const fetchHotNotes = async () => {
+  try {
+    const res = await get('/notes/hot')
+    hotNotesList.value = res.data || []
+  } catch (err) {
+    console.error('获取热点笔记失败:', err)
+  }
+}
+
 // 搜索处理（防抖）
 const handleSearch = () => {
   if (searchTimer) clearTimeout(searchTimer)
@@ -829,18 +874,25 @@ const handleMenuSelect = (index) => {
 // 底部菜单切换
 const handleFooterMenuSelect = (index) => {
   activeMenu.value = index
-  currentNote.value = null
+  // 不要清空 currentNote，保留当前笔记状态以便判断是否需要重新加载
   if (index === 'trash') {
     fetchTrashRootNodes()
   } else if (index === 'history') {
     fetchHistoryList()
+  } else if (index === 'hot') {
+    fetchHotNotes()
   }
 }
 
 // 点击树节点
 const handleNodeClick = async (data, node) => {
   if (data.type === 'NOTE') {
-    router.push(`/note/${data.id}`)
+    // 如果点击的是当前已打开的笔记，直接重新加载
+    if (currentNote.value?.id === data.id) {
+      loadNoteDetail(data.id)
+    } else {
+      router.push(`/note/${data.id}`)
+    }
   }
 }
 
@@ -1098,6 +1150,12 @@ watch(() => currentNote.value?.content, () => {
   }
 })
 
+// 协同编辑同步状态
+const syncStatus = ref('')
+const handleSyncStatus = (status) => {
+  syncStatus.value = status
+}
+
 // 修改可见性
 const handleVisibilityChange = async (value) => {
   if (!currentNote.value) return
@@ -1322,7 +1380,23 @@ const openShareDialog = async () => {
 // 点击浏览历史项
 const handleHistoryClick = async (item) => {
   activeMenu.value = 'note'
-  router.push(`/note/${item.noteId}`)
+  // 如果点击的是当前已打开的笔记，直接重新加载
+  if (currentNote.value?.id === item.noteId) {
+    loadNoteDetail(item.noteId)
+  } else {
+    router.push(`/note/${item.noteId}`)
+  }
+}
+
+// 点击热点笔记项
+const handleHotNoteClick = async (item) => {
+  activeMenu.value = 'note'
+  // 如果点击的是当前已打开的笔记，直接重新加载
+  if (currentNote.value?.id === item.id) {
+    loadNoteDetail(item.id)
+  } else {
+    router.push(`/note/${item.id}`)
+  }
 }
 
 // 清空浏览历史
@@ -1703,6 +1777,20 @@ const handleLogout = async () => {
 
 .auto-save-status.saved {
   color: #67c23a;
+}
+
+.sync-status {
+  font-size: 12px;
+  color: #909399;
+  margin-left: 12px;
+}
+
+.sync-status.connected {
+  color: #67c23a;
+}
+
+.sync-status.disconnected {
+  color: #f56c6c;
 }
 
 .editor-tags {

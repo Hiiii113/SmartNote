@@ -4,12 +4,15 @@ import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.dto.CreateNoteDto;
 import hiiii113.smartnote.dto.NoteDetailDto;
 import hiiii113.smartnote.dto.UpdateNoteDto;
+import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
 import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.NoteService;
 import hiiii113.smartnote.utils.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 笔记的 controller
@@ -103,5 +106,15 @@ public class NoteController
         // 修改笔记可见性
         noteService.updateVisibility(userId, noteId, visibility);
         return Result.ok("可见性修改成功！");
+    }
+
+    // 获取最近常看的 3 篇笔记
+    @GetMapping("/hot")
+    @LogAnnotation(module = "笔记", operator = "获取热点笔记")
+    public Result<List<Note>> getHotNotes()
+    {
+        Long userId = StpUtil.getLoginIdAsLong();
+        List<Note> notes = noteService.getHotNotes(userId, null);
+        return Result.ok(notes);
     }
 }

@@ -33,7 +33,13 @@ public class WsAuthInterceptor implements HandshakeInterceptor
             return false;
         }
 
+        // 提取 token，处理可能存在的尾部斜杠
         String token = query.replace("token=", "");
+        // 移除 token 后面可能存在的路径部分（y-websocket 会追加 room name）
+        if (token.contains("/"))
+        {
+            token = token.substring(0, token.indexOf("/"));
+        }
 
         try
         {

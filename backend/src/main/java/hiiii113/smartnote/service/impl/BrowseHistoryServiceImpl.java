@@ -73,4 +73,14 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
                 .eq(BrowseHistory::getNoteId, noteId)
                 .remove();
     }
+
+    @Override
+    public int getHistoryCount(Long userId, Long noteId)
+    {
+        BrowseHistory history = lambdaQuery()
+                .eq(BrowseHistory::getUserId, userId)
+                .eq(BrowseHistory::getNoteId, noteId)
+                .one();
+        return history == null ? 0 : history.getViewCount();
+    }
 }

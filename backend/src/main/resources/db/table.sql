@@ -38,6 +38,7 @@ CREATE TABLE `note`
     `content`    LONGTEXT COMMENT '笔记正文，存Markdown',
     `visibility` VARCHAR(20)           DEFAULT 'PRIVATE' COMMENT '可见性: PRIVATE/FRIENDS/PUBLIC',
     `tags`       VARCHAR(500) COMMENT '标签',
+    `view_count` INT                  DEFAULT 0 COMMENT '全局访问次数',
     `is_deleted` TINYINT               DEFAULT 0 COMMENT '逻辑删除 0-正常 1-在回收站',
     `deleted_at` DATETIME COMMENT '进入回收站的时间',
     `created_at` DATETIME              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

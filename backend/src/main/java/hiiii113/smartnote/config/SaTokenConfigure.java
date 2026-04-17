@@ -20,7 +20,7 @@ public class SaTokenConfigure implements WebMvcConfigurer
         registry.addInterceptor(new SaInterceptor(handle ->
                         SaRouter.match("/**")
                                 .notMatch("/users/login", "/users/logout", "/upload/**")
-                                .notMatch("POST /users")
+                                .notMatch("/users")  // 注册接口 POST /users
                                 .check(r -> StpUtil.checkLogin())))
                 .addPathPatterns("/**");
     }

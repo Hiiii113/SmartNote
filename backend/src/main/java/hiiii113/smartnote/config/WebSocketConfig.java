@@ -2,6 +2,7 @@ package hiiii113.smartnote.config;
 
 import hiiii113.smartnote.websocket.ChatWebSocketHandler;
 import hiiii113.smartnote.websocket.WsAuthInterceptor;
+import hiiii113.smartnote.websocket.YjsWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -18,11 +19,16 @@ public class WebSocketConfig implements WebSocketConfigurer
 {
     private final ChatWebSocketHandler chatWebSocketHandler;
     private final WsAuthInterceptor wsAuthInterceptor;
+    private final YjsWebSocketHandler yjsWebSocketHandler;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry)
     {
         registry.addHandler(chatWebSocketHandler, "/ws/chat")
+                .addInterceptors(wsAuthInterceptor)  // 握手拦截器，验证 token
+                .setAllowedOrigins("*");
+
+        registry.addHandler(yjsWebSocketHandler, "/ws/yjs/*")
                 .addInterceptors(wsAuthInterceptor)  // 握手拦截器，验证 token
                 .setAllowedOrigins("*");
     }

@@ -7,6 +7,8 @@ import hiiii113.smartnote.dto.UpdateNoteDto;
 import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
 
+import java.util.List;
+
 public interface NoteService extends IService<Note>
 {
     // 创建笔记
@@ -32,4 +34,13 @@ public interface NoteService extends IService<Note>
 
     // 修改笔记可见性
     void updateVisibility(Long userId, Long noteId, NoteVisibilityTypeEnum visibility);
+
+    // 查询笔记时候的权限校验
+    boolean checkGetNodeDetailPermission(Long userId, Long noteId);
+
+    // 增加笔记全局访问次数
+    void incrementViewCount(Long noteId);
+
+    // 获取最近常看三篇笔记
+    List<Note> getHotNotes(Long userId, Long noteId);
 }

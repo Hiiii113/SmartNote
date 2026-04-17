@@ -11,12 +11,15 @@ import hiiii113.smartnote.exception.BusinessException;
 import hiiii113.smartnote.mapper.FolderMapper;
 import hiiii113.smartnote.mapper.NoteMapper;
 import hiiii113.smartnote.service.BrowseHistoryService;
+import hiiii113.smartnote.service.NoteCacheService;
 import hiiii113.smartnote.service.NotePermissionService;
 import hiiii113.smartnote.service.NoteService;
 import hiiii113.smartnote.utils.Result;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements NoteService
@@ -33,6 +37,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     private final BrowseHistoryService browseHistoryService;
     private final NotePermissionService notePermissionService;
     private final VectorStore vectorStore;
+    private final NoteCacheService noteCacheService;
 
     // 向量数据库内容最大长度
     private static final int MAX_VECTOR_CONTENT_LENGTH = 8000;
@@ -130,6 +135,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 
     @Override
     @Transactional
+    @CacheEvict(value = "noteCache", key = "#noteId")
     public void updateNote(Long userId, Long noteId, UpdateNoteDto dto)
     {
         // 查询笔记
@@ -173,14 +179,25 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         // 保存更新
         this.updateById(note);
 
-        // 更新向量数据库
-        deleteNoteFromVectorStore(noteId);
-        addNoteToVectorStore(note);
+        // 更新向量数据库（失败不影响主流程）
+        try
+        {
+            // 删除
+            deleteNoteFromVectorStore(noteId);
+            // 重新添加
+            addNoteToVectorStore(note);
+        }
+        catch (Exception e)
+        {
+            // 向量数据库更新失败，记录日志但不影响笔记更新
+            log.warn("更新向量数据库失败: noteId = {}, error={}", noteId, e.getMessage());
+        }
     }
 
     // 删除笔记（移入回收站）
     @Override
     @Transactional
+    @CacheEvict(value = "noteCache", key = "#noteId")
     public void deleteNote(Long userId, Long noteId)
     {
         // 查询笔记
@@ -202,6 +219,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 
     @Override
     @Transactional
+    @CacheEvict(value = "noteCache", key = "#noteId")
     public void restoreNote(Long userId, Long noteId)
     {
         // 查询笔记
@@ -224,6 +242,78 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 
     @Override
     public NoteDetailDto getNoteDetail(Long userId, Long noteId)
+    {
+        // 权限验证
+        boolean canEdit = checkGetNodeDetailPermission(userId, noteId);
+
+        // 查询
+        NoteDetailDto dto = noteCacheService.getNodeDetailCache(noteId);
+
+        // 记录浏览历史
+        browseHistoryService.recordView(userId, noteId);
+
+        // 全局浏览次数增加
+        incrementViewCount(noteId);
+
+        if (dto != null)
+        {
+            dto.setCanEdit(canEdit); // 返回的时候带上，前端也做限制
+        }
+
+        return dto;
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "noteCache", key = "#noteId")
+    public void permanentDelete(Long userId, Long noteId)
+    {
+        // 查询笔记
+        Note note = this.getById(noteId);
+        if (note == null)
+        {
+            throw new BusinessException("笔记不存在", 404);
+        }
+
+        // 从向量数据库删除
+        deleteNoteFromVectorStore(noteId);
+
+        // 物理删除
+        this.removeById(noteId);
+    }
+
+    @Override
+    public String getNoteContent(Long userId, Long noteId)
+    {
+        Note note = this.getById(noteId);
+        if (note == null)
+        {
+            throw new BusinessException("笔记不存在", 404);
+        }
+        return "标题：" + note.getTitle() + "\n\n内容：" + note.getContent();
+    }
+
+    @Override
+    @CacheEvict(value = "noteCache", key = "#noteId")
+    public void updateVisibility(Long userId, Long noteId, NoteVisibilityTypeEnum visibility)
+    {
+        Note note = this.getById(noteId);
+        if (note == null)
+        {
+            throw new BusinessException("笔记不存在", Result.CODE_NOT_FOUND);
+        }
+        if (!note.getUserId().equals(userId))
+        {
+            throw new BusinessException("无权修改", Result.CODE_FORBIDDEN);
+        }
+
+        // 修改
+        note.setVisibility(visibility);
+        this.updateById(note);
+    }
+
+    @Override
+    public boolean checkGetNodeDetailPermission(Long userId, Long noteId)
     {
         // 查询笔记
         Note note = this.getById(noteId);
@@ -265,65 +355,34 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
             throw new BusinessException("无权查看此笔记", Result.CODE_FORBIDDEN);
         }
 
-        // 记录浏览历史
-        browseHistoryService.recordView(userId, noteId);
-
-        // 转换为 DTO 返回
-        NoteDetailDto dto = new NoteDetailDto();
-        dto.setTitle(note.getTitle());
-        dto.setContent(note.getContent());
-        dto.setTags(note.getTags());
-        dto.setVisibility(note.getVisibility());
-        dto.setUpdatedAt(note.getUpdatedAt());
-        dto.setCanEdit(canEdit); // 返回的时候带上，前端也做限制
-
-        return dto;
+        return canEdit;
     }
 
     @Override
-    @Transactional
-    public void permanentDelete(Long userId, Long noteId)
+    public void incrementViewCount(Long noteId)
     {
-        // 查询笔记
-        Note note = this.getById(noteId);
-        if (note == null)
-        {
-            throw new BusinessException("笔记不存在", 404);
-        }
-
-        // 从向量数据库删除
-        deleteNoteFromVectorStore(noteId);
-
-        // 物理删除
-        this.removeById(noteId);
+        lambdaUpdate()
+                .eq(Note::getId, noteId)
+                .setSql("view_count = IFNULL(view_count, 0) + 1") // viewCount + 1
+                .update();
     }
 
     @Override
-    public String getNoteContent(Long userId, Long noteId)
+    public List<Note> getHotNotes(Long userId, Long noteId)
     {
-        Note note = this.getById(noteId);
-        if (note == null)
-        {
-            throw new BusinessException("笔记不存在", 404);
-        }
-        return "标题：" + note.getTitle() + "\n\n内容：" + note.getContent();
+        return lambdaQuery()
+                .eq(Note::getUserId, userId)
+                .eq(Note::getIsDeleted, 0)
+                .orderByDesc(Note::getViewCount)
+                .orderByDesc(Note::getUpdatedAt)
+                .last("LIMIT 3")
+                .list();
     }
 
-    @Override
-    public void updateVisibility(Long userId, Long noteId, NoteVisibilityTypeEnum visibility)
+    // 查询浏览次数
+    public int getViewCount(Long noteId)
     {
         Note note = this.getById(noteId);
-        if (note == null)
-        {
-            throw new BusinessException("笔记不存在", Result.CODE_NOT_FOUND);
-        }
-        if (!note.getUserId().equals(userId))
-        {
-            throw new BusinessException("无权修改", Result.CODE_FORBIDDEN);
-        }
-
-        // 修改
-        note.setVisibility(visibility);
-        this.updateById(note);
+        return note == null || note.getViewCount() == null ? 0 : note.getViewCount();
     }
 }

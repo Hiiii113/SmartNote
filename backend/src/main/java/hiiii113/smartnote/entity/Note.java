@@ -32,6 +32,8 @@ public class Note
 
     private String tags;
 
+    private Integer viewCount;
+
     private Integer isDeleted;
 
     private LocalDateTime deletedAt;
