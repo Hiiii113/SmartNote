@@ -1112,6 +1112,7 @@ const loadNoteDetail = async (noteId) => {
     disconnectNoteSync()
     stopOnlineCountPolling()
     onlineCount.value = 0
+    ElMessage.error(err.msg || '加载笔记失败')
     router.push('/note')
   }
 }
@@ -1327,7 +1328,7 @@ const handleSaveNote = async () => {
     })
     ElMessage.success('保存成功')
   } catch (err) {
-    ElMessage.error('保存失败')
+    ElMessage.error(err.msg || '保存失败')
   }
 }
 
@@ -1350,6 +1351,7 @@ const autoSaveNote = () => {
       setTimeout(() => { autoSaveStatus.value = '' }, 2000)
     } catch (err) {
       autoSaveStatus.value = ''
+      ElMessage.error(err.msg || '保存失败')
     }
   }, 2000)
 }
