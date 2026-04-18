@@ -39,13 +39,12 @@ public class NoteTools
             @ToolParam(description = "搜索语义关键词，例如：关于工作计划的笔记") String keyword)
     {
         // 获取用户 id
-        String userId = StpUtil.getLoginIdAsString();
+        long userId = Long.parseLong(StpUtil.getLoginIdAsString());
 
         log.info("语义搜索笔记: keyword={}, userId={}", keyword, userId);
 
-        // 构建元数据过滤条件（只搜索当前用户的笔记）
         var builder = new FilterExpressionBuilder();
-        var filter = builder.eq("userId", userId).build(); // 匹配当前用户
+        var filter = builder.eq("userId", userId).build();
 
         // 构建向量搜索请求
         SearchRequest request = SearchRequest.builder()
@@ -57,27 +56,23 @@ public class NoteTools
         // 执行搜索
         List<Document> results = vectorStore.similaritySearch(request);
 
-        if (results != null && results.isEmpty())
+        if (results == null || results.isEmpty())
         {
             return "未找到关于 \"" + keyword + "\" 的相关笔记。";
         }
 
-        // 格式化输出
         StringBuilder result = new StringBuilder();
-        if (results != null)
+        result.append("找到 ").append(results.size()).append(" 篇语义相关笔记：\n");
+
+        // 每一篇笔记加上对应的东西
+        for (Document doc : results)
         {
-            result.append("找到 ").append(results.size()).append(" 篇语义相关笔记：\n");
+            String content = doc.getText();
+            String title = (String) doc.getMetadata().getOrDefault("title", "无标题");
+            String noteId = String.valueOf(doc.getMetadata().getOrDefault("noteId", "未知ID"));
 
-            // 每一篇笔记加上对应的东西
-            for (Document doc : results)
-            {
-                String content = doc.getText();
-                String title = (String) doc.getMetadata().getOrDefault("title", "无标题");
-                String noteId = String.valueOf(doc.getMetadata().getOrDefault("noteId", "未知ID"));
-
-                result.append("--- [ID: ").append(noteId).append(" | 标题: ").append(title).append("] ---\n");
-                result.append(content).append("\n\n");
-            }
+            result.append("--- [ID: ").append(noteId).append(" | 标题: ").append(title).append("] ---\n");
+            result.append(content).append("\n\n");
         }
 
         return result.toString();

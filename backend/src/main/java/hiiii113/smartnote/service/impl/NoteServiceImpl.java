@@ -3,6 +3,7 @@ package hiiii113.smartnote.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import hiiii113.smartnote.dto.CreateNoteDto;
 import hiiii113.smartnote.dto.NoteDetailDto;
+import hiiii113.smartnote.dto.NoteSyncMessageDto;
 import hiiii113.smartnote.dto.UpdateNoteDto;
 import hiiii113.smartnote.entity.Folder;
 import hiiii113.smartnote.entity.Note;
@@ -39,8 +40,8 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     private final VectorStore vectorStore;
     private final NoteCacheService noteCacheService;
 
-    // 向量数据库内容最大长度
-    private static final int MAX_VECTOR_CONTENT_LENGTH = 8000;
+    // 向量数据库内容最大长度（嵌入模型限制 2048 tokens，保守估计约 1500 字符）
+    private static final int MAX_VECTOR_CONTENT_LENGTH = 1500;
 
     // 创建笔记
     @Override
@@ -291,6 +292,10 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         {
             throw new BusinessException("笔记不存在", 404);
         }
+        if (!userId.equals(note.getUserId()))
+        {
+            throw new BusinessException("无权删除此笔记", 403);
+        }
 
         // 从向量数据库删除
         try
@@ -354,6 +359,16 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
             throw new BusinessException("笔记已删除", Result.CODE_NOT_FOUND);
         }
 
+        // 所在文件夹已进回收站时不可见
+        if (note.getFolderId() != null && note.getFolderId() > 0)
+        {
+            Folder folder = folderMapper.selectById(note.getFolderId());
+            if (folder != null && folder.getIsDeleted() != null && folder.getIsDeleted() == 1)
+            {
+                throw new BusinessException("笔记所在文件夹已删除", Result.CODE_NOT_FOUND);
+            }
+        }
+
         // 权限校验
         boolean canView = false;
         boolean canEdit = false;
@@ -407,7 +422,27 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
                 .list();
     }
 
-    // 查询浏览次数
+    // 获取笔记同步消息
+    @Override
+    public NoteSyncMessageDto getNoteSyncMessage(Long noteId)
+    {
+        Note note = this.getById(noteId);
+        if (note == null)
+        {
+            return null;
+        }
+
+        NoteSyncMessageDto dto = new NoteSyncMessageDto();
+        dto.setType("note-updated");
+        dto.setNoteId(note.getId());
+        dto.setTitle(note.getTitle());
+        dto.setContent(note.getContent());
+        dto.setTags(note.getTags());
+        dto.setVisibility(note.getVisibility());
+        dto.setUpdatedAt(note.getUpdatedAt());
+        return dto;
+    }
+
     public int getViewCount(Long noteId)
     {
         Note note = this.getById(noteId);

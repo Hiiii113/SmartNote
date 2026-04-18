@@ -6,6 +6,7 @@ import hiiii113.smartnote.dto.RenameFolderDto;
 import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.FolderService;
 import hiiii113.smartnote.utils.Result;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,13 +26,13 @@ public class FolderController
      */
     @PostMapping
     @LogAnnotation(module = "文件夹", operator = "创建文件夹")
-    public Result<Void> createFolder(@RequestBody CreateFolderDto dto)
+    public Result<Void> createFolder(@Valid @RequestBody CreateFolderDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 创建文件夹，传入 dto
         folderService.createFolder(userId, dto);
-        return Result.ok();
+        return Result.ok("文件夹创建成功");
     }
 
     /**
@@ -41,13 +42,13 @@ public class FolderController
      */
     @PutMapping("/{folderId}")
     @LogAnnotation(module = "文件夹", operator = "重命名文件夹")
-    public Result<Void> renameFolder(@PathVariable Long folderId, @RequestBody RenameFolderDto dto)
+    public Result<Void> renameFolder(@PathVariable Long folderId, @Valid @RequestBody RenameFolderDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 重命名
         folderService.renameFolder(userId, folderId, dto.getName());
-        return Result.ok();
+        return Result.ok("文件夹重命名成功");
     }
 
     /**
@@ -63,7 +64,7 @@ public class FolderController
         Long userId = StpUtil.getLoginIdAsLong();
         // 删除
         folderService.deleteFolder(userId, folderId);
-        return Result.ok();
+        return Result.ok("文件夹已移入回收站");
     }
 
     /**
@@ -78,7 +79,7 @@ public class FolderController
         Long userId = StpUtil.getLoginIdAsLong();
         // 恢复文件夹
         folderService.restoreFolder(userId, folderId);
-        return Result.ok();
+        return Result.ok("文件夹恢复成功");
     }
 
     // 永久删除文件夹
@@ -90,6 +91,6 @@ public class FolderController
         Long userId = StpUtil.getLoginIdAsLong();
         // 永久删除
         folderService.permanentDelete(userId, folderId);
-        return Result.ok();
+        return Result.ok("文件夹已永久删除");
     }
 }

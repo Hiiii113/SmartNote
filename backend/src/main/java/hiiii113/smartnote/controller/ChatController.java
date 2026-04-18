@@ -7,6 +7,7 @@ import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.ChatMsgService;
 import hiiii113.smartnote.utils.Result;
 import hiiii113.smartnote.websocket.ChatWebSocketHandler;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +31,7 @@ public class ChatController
      */
     @PostMapping("/send")
     @LogAnnotation(module = "聊天", operator = "发送消息")
-    public Result<Void> sendMessage(@RequestBody ChatMessageDto dto)
+    public Result<Void> sendMessage(@Valid @RequestBody ChatMessageDto dto)
     {
         // 发送者 id
         Long fromId = StpUtil.getLoginIdAsLong();
@@ -44,7 +45,7 @@ public class ChatController
         // 推送给对方（websocket）
         webSocketHandler.pushMessage(dto.getToId(), pushDto);
 
-        return Result.ok();
+        return Result.ok("消息发送成功");
     }
 
     /**
@@ -96,6 +97,6 @@ public class ChatController
 
         // 标记为已读
         chatMsgService.markAsRead(userId, friendId);
-        return Result.ok();
+        return Result.ok("消息已标记为已读");
     }
 }

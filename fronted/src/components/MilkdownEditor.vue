@@ -1,291 +1,102 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
-import { Editor, rootCtx, defaultValueCtx } from '@milkdown/core'
-import { commonmark } from '@milkdown/preset-commonmark'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { Editor, defaultValueCtx, editorViewOptionsCtx, rootCtx } from '@milkdown/core'
 import { listener, listenerCtx } from '@milkdown/plugin-listener'
-import * as Y from 'yjs'
+import { commonmark } from '@milkdown/preset-commonmark'
+import { replaceAll } from '@milkdown/utils'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
-  placeholder: { type: String, default: '开始编写...' },
+  placeholder: { type: String, default: '请输入内容...' },
   noteId: { type: [String, Number], default: null },
   readOnly: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update:modelValue', 'sync-status'])
+const emit = defineEmits(['update:modelValue'])
 
 const editorRef = ref(null)
 let editor = null
 let isInternalUpdate = false
 let lastValue = ''
 
-// Yjs 相关
-let ydoc = null
-let ytext = null
-let socket = null
-let isSynced = false
-let heartbeatTimer = null
+const editable = computed(() => !props.readOnly)
 
-// 计算 WebSocket URL
-const wsUrl = computed(() => {
-  if (!props.noteId) return null
-  const token = localStorage.getItem('token')
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//localhost:8081/ws/yjs/${props.noteId}?token=${token}`
-})
+const initEditor = async (content = '') => {
+  if (!editorRef.value || editor) return
 
-// 初始化 Yjs 协同编辑
-const initYjs = () => {
-  if (!wsUrl.value) {
-    console.log('[Yjs] 没有 noteId，跳过连接')
-    return
-  }
-
-  console.log('[Yjs] 准备连接:', wsUrl.value)
-  emit('sync-status', 'connecting')
-
-  // 创建 Yjs 文档
-  ydoc = new Y.Doc()
-  ytext = ydoc.getText('content')
-
-  // 创建原生 WebSocket 连接
-  socket = new WebSocket(wsUrl.value)
-  socket.binaryType = 'arraybuffer' // 设置类型是二进制
-
-  socket.onopen = () => {
-    console.log('[Yjs] WebSocket 已连接')
-    emit('sync-status', 'connected')
-
-    // 开始心跳
-    startHeartbeat()
-
-    // 如果有初始内容，先设置到 ytext
-    if (props.modelValue) {
-      ydoc.transact(() => {
-        ytext.insert(0, props.modelValue)
+  lastValue = content || ''
+  editor = await Editor.make()
+    .config((ctx) => {
+      ctx.set(rootCtx, editorRef.value)
+      ctx.set(defaultValueCtx, lastValue)
+      ctx.update(editorViewOptionsCtx, (prev) => ({
+        ...prev,
+        editable: () => editable.value
+      }))
+      ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
+        if (isInternalUpdate) return
+        lastValue = markdown
+        emit('update:modelValue', markdown)
       })
-    }
-
-    // 发送完整文档状态，让其他用户同步
-    const state = Y.encodeStateAsUpdate(ydoc)
-    socket.send(state)
-  }
-
-  socket.onmessage = (event) => {
-    const arrayBuffer = event.data
-    if (!arrayBuffer || arrayBuffer.byteLength === 0) return
-
-    try {
-      // 应用 Yjs 更新
-      Y.applyUpdate(ydoc, new Uint8Array(arrayBuffer), 'remote')
-      isSynced = true
-
-      // 更新编辑器内容
-      const newContent = ytext.toString()
-      if (newContent !== lastValue) {
-        isInternalUpdate = true
-        lastValue = newContent
-        emit('update:modelValue', newContent)
-        if (editor) {
-          updateEditorContent(newContent)
-        }
-        setTimeout(() => { isInternalUpdate = false }, 0)
-      }
-    } catch (e) {
-      console.error('[Yjs] 处理消息失败:', e)
-    }
-  }
-
-  socket.onerror = (e) => {
-    console.error('[Yjs] WebSocket 错误:', e)
-    emit('sync-status', 'disconnected')
-  }
-
-  socket.onclose = (e) => {
-    console.log('[Yjs] WebSocket 关闭:', e.code, e.reason)
-    emit('sync-status', 'disconnected')
-    stopHeartbeat()
-  }
-
-  // 监听本地文档变化，发送给后端
-  ydoc.on('update', (update, origin) => {
-    // 只发送本地产生的更新，不发送远程更新
-    if (origin !== 'remote' && socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(update)
-    }
-  })
+    })
+    .use(commonmark)
+    .use(listener)
+    .create()
 }
 
-// 断开 Yjs 连接
-const disconnectYjs = () => {
-  stopHeartbeat()
-  if (socket) {
-    socket.close()
-    socket = null
-  }
-  if (ydoc) {
-    ydoc.destroy()
-    ydoc = null
-    ytext = null
-  }
-  isSynced = false
+const destroyEditor = async () => {
+  if (!editor) return
+  await editor.destroy()
+  editor = null
 }
 
-// 开始心跳
-const startHeartbeat = () => {
-  stopHeartbeat()
-  heartbeatTimer = setInterval(() => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      // 发送心跳消息（文本格式，后端会忽略）
-      socket.send(JSON.stringify({ type: 'heartbeat' }))
-    }
-  }, 30000) // 30秒一次
-}
+const syncEditorContent = (content = '') => {
+  if (!editor || content === lastValue) return
 
-// 停止心跳
-const stopHeartbeat = () => {
-  if (heartbeatTimer) {
-    clearInterval(heartbeatTimer)
-    heartbeatTimer = null
-  }
-}
+  isInternalUpdate = true
+  lastValue = content
 
-// 更新编辑器内容（通过重建编辑器）
-const updateEditorContent = (content) => {
-  if (editor) {
-    editor.destroy()
-    editor = null
+  try {
+    editor.action(replaceAll(content))
+  } finally {
     setTimeout(() => {
-      initEditorWithContent(content)
+      isInternalUpdate = false
     }, 0)
   }
 }
 
-// 使用指定内容初始化编辑器
-const initEditorWithContent = async (content) => {
-  if (editorRef.value && !editor) {
-    editor = await Editor.make()
-      .config((ctx) => {
-        ctx.set(rootCtx, editorRef.value)
-        ctx.set(defaultValueCtx, content || '')
-        ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
-          if (isInternalUpdate) return
-
-          isInternalUpdate = true
-          lastValue = markdown
-          emit('update:modelValue', markdown)
-
-          // 同步到 Yjs
-          if (ytext && !props.readOnly) {
-            ydoc.transact(() => {
-              ytext.delete(0, ytext.length)
-              ytext.insert(0, markdown)
-            })
-          }
-
-          setTimeout(() => {
-            isInternalUpdate = false
-          }, 0)
-        })
-      })
-      .use(commonmark)
-      .use(listener)
-      .create()
+watch(
+  () => props.modelValue,
+  (newValue) => {
+    if (!editor) return
+    syncEditorContent(newValue || '')
   }
-}
+)
 
-// 初始化编辑器
-const initEditor = async () => {
-  // 如果 Yjs 已有内容，使用 Yjs 的内容
-  let initialContent = props.modelValue || ''
-
-  if (ytext && ytext.length > 0) {
-    initialContent = ytext.toString()
-    lastValue = initialContent
-    emit('update:modelValue', initialContent)
-  } else {
-    lastValue = initialContent
-    // 将初始内容同步到 Yjs
-    if (ytext && initialContent) {
-      ydoc.transact(() => {
-        ytext.insert(0, initialContent)
-      })
-    }
+watch(
+  () => props.readOnly,
+  async () => {
+    const content = lastValue
+    await destroyEditor()
+    await initEditor(content)
   }
+)
 
-  await initEditorWithContent(initialContent)
-}
-
-// 监听 noteId 变化，重新建立连接
-watch(() => props.noteId, (newNoteId, oldNoteId) => {
-  if (newNoteId !== oldNoteId) {
-    // 断开旧连接
-    disconnectYjs()
-
-    // 销毁编辑器
-    if (editor) {
-      editor.destroy()
-      editor = null
-    }
-
-    // 重新初始化
-    if (newNoteId) {
-      initYjs()
-      setTimeout(() => {
-        initEditor()
-      }, 100)
-    } else {
-      initEditor()
-    }
+watch(
+  () => props.noteId,
+  async () => {
+    const content = props.modelValue || ''
+    await destroyEditor()
+    await initEditor(content)
   }
-}, { immediate: false })
-
-// 监听外部值变化（非 Yjs 更新）
-watch(() => props.modelValue, (newVal) => {
-  if (!isInternalUpdate && editor && newVal !== lastValue) {
-    lastValue = newVal
-
-    // 同步到 Yjs
-    if (ytext && !props.readOnly) {
-      ydoc.transact(() => {
-        ytext.delete(0, ytext.length)
-        ytext.insert(0, newVal || '')
-      })
-    }
-
-    // 重建编辑器
-    editor.destroy()
-    editor = null
-    setTimeout(() => {
-      initEditorWithContent(newVal || '')
-    }, 0)
-  }
-})
+)
 
 onMounted(() => {
-  if (props.noteId) {
-    initYjs()
-    // 等待 Yjs 连接建立后再初始化编辑器
-    setTimeout(() => {
-      initEditor()
-    }, 100)
-  } else {
-    initEditor()
-  }
+  initEditor(props.modelValue || '')
 })
 
 onUnmounted(() => {
-  if (editor) {
-    editor.destroy()
-    editor = null
-  }
-  disconnectYjs()
-})
-
-// 暴露方法
-defineExpose({
-  getContent: () => props.modelValue,
-  isConnected: () => socket?.readyState === WebSocket.OPEN
+  destroyEditor()
 })
 </script>
 
@@ -309,7 +120,6 @@ defineExpose({
   overflow: auto;
 }
 
-/* Milkdown 基础样式 */
 .editor-container :deep(.editor) {
   height: 100%;
   padding: 16px;

@@ -6,6 +6,7 @@ import hiiii113.smartnote.dto.SetFriendGroupDto;
 import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.FriendshipService;
 import hiiii113.smartnote.utils.Result;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,18 +51,18 @@ public class FriendshipController
         Long userId = StpUtil.getLoginIdAsLong();
         // 删除好友
         friendshipService.deleteFriend(userId, friendId);
-        return Result.ok();
+        return Result.ok("好友删除成功");
     }
 
     // 设置好友标签
     @PutMapping("/group/{friendId}")
     @LogAnnotation(module = "好友", operator = "设置好友标签")
-    public Result<Void> setFriendGroup(@RequestBody SetFriendGroupDto dto, @PathVariable Long friendId)
+    public Result<Void> setFriendGroup(@Valid @RequestBody SetFriendGroupDto dto, @PathVariable Long friendId)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 设置
         friendshipService.setFriendGroup(userId, friendId, dto.getGroup());
-        return Result.ok();
+        return Result.ok("好友分组设置成功");
     }
 }

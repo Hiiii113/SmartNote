@@ -225,7 +225,7 @@
               <el-button type="primary" :icon="Check" @click="handleSaveNote">保存</el-button>
               <span v-if="autoSaveStatus === 'saving'" class="auto-save-status">保存中...</span>
               <span v-else-if="autoSaveStatus === 'saved'" class="auto-save-status saved">已保存</span>
-              <span v-if="syncStatus === 'connected'" class="sync-status connected">协同在线</span>
+              <span v-if="syncStatus === 'connected'" class="sync-status connected">协同在线（{{ onlineCount }}人）</span>
               <span v-else-if="syncStatus === 'connecting'" class="sync-status">连接中...</span>
               <span v-else-if="syncStatus === 'disconnected'" class="sync-status disconnected">离线</span>
             </div>
@@ -254,12 +254,12 @@
             </el-button>
           </div>
           <MilkdownEditor
+            :key="currentNote.id"
             v-model="currentNote.content"
             :note-id="currentNote.id"
             :read-only="!currentNote.canEdit"
             placeholder="开始编写你的笔记..."
             class="md-editor"
-            @sync-status="handleSyncStatus"
           />
         </div>
         <div v-else class="empty-content">
@@ -301,9 +301,7 @@
       @click.stop
     >
       <div class="menu-item" @click="handleContextRestore">恢复</div>
-      <div v-if="contextMenuData.type === 'NOTE'" class="menu-item danger"
-           @click="handleContextPermanentDelete">永久删除
-      </div>
+      <div class="menu-item danger" @click="handleContextPermanentDelete">永久删除</div>
     </div>
 
     <!-- 新建笔记弹窗 -->
@@ -514,7 +512,7 @@
 </template>
 
 <script setup>
-import {onMounted, ref, watch} from 'vue'
+import {onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {del, get, post, put} from '@/utils/request.js'
 import {getAvatarUrl} from '@/utils/common.js'
@@ -676,7 +674,7 @@ const selectConversation = async (conversationId) => {
 // 删除会话
 const handleDeleteConversation = async (conversationId) => {
   try {
-    await ElMessageBox.confirm('确定要删除该对话吗？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确定要删除该对话吗？', '提示', { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' })
     await del(`/ai/conversation/${conversationId}`)
     ElMessage.success('删除成功')
     // 刷新会话列表
@@ -896,6 +894,11 @@ onMounted(() => {
   fetchUserInfo()
 })
 
+onUnmounted(() => {
+  disconnectNoteSync()
+  stopOnlineCountPolling()
+})
+
 // 获取用户信息
 const fetchUserInfo = async () => {
   try {
@@ -959,6 +962,138 @@ const handleNodeClick = async (data, node) => {
   }
 }
 
+// 协同编辑同步状态
+const syncStatus = ref('')
+const onlineCount = ref(0)
+let onlineCountTimer = null
+let noteSyncSocket = null
+let noteHeartbeatTimer = null
+let currentSyncNoteId = null
+
+const stopOnlineCountPolling = () => {
+  if (onlineCountTimer) {
+    clearInterval(onlineCountTimer)
+    onlineCountTimer = null
+  }
+}
+
+const fetchOnlineCount = async (noteId) => {
+  if (!noteId) {
+    onlineCount.value = 0
+    return
+  }
+  try {
+    const res = await get(`/notes/${noteId}/online-count`)
+    onlineCount.value = Number(res.data || 0)
+  } catch (err) {
+    onlineCount.value = 0
+  }
+}
+
+const startOnlineCountPolling = (noteId) => {
+  stopOnlineCountPolling()
+  fetchOnlineCount(noteId)
+  onlineCountTimer = setInterval(() => {
+    fetchOnlineCount(noteId)
+  }, 3000)
+}
+
+const stopNoteHeartbeat = () => {
+  if (noteHeartbeatTimer) {
+    clearInterval(noteHeartbeatTimer)
+    noteHeartbeatTimer = null
+  }
+}
+
+const startNoteHeartbeat = () => {
+  stopNoteHeartbeat()
+  noteHeartbeatTimer = setInterval(() => {
+    if (noteSyncSocket && noteSyncSocket.readyState === WebSocket.OPEN) {
+      noteSyncSocket.send(JSON.stringify({ type: 'heartbeat' }))
+    }
+  }, 30000)
+}
+
+const disconnectNoteSync = () => {
+  stopNoteHeartbeat()
+  currentSyncNoteId = null
+  if (noteSyncSocket) {
+    noteSyncSocket.close()
+    noteSyncSocket = null
+  }
+  syncStatus.value = 'disconnected'
+}
+
+const handleSyncStatus = (status) => {
+  syncStatus.value = status
+  if (status !== 'connected') {
+    onlineCount.value = 0
+  }
+}
+
+const applyRemoteNoteUpdate = (payload) => {
+  if (!currentNote.value || Number(payload.noteId) !== Number(currentNote.value.id)) {
+    return
+  }
+
+  currentNote.value = {
+    ...currentNote.value,
+    title: payload.title ?? currentNote.value.title,
+    content: payload.content ?? '',
+    tags: payload.tags ? payload.tags.split(',').filter(t => t) : [],
+    visibility: payload.visibility || currentNote.value.visibility
+  }
+}
+
+const connectNoteSync = (noteId) => {
+  if (!noteId) {
+    disconnectNoteSync()
+    return
+  }
+
+  if (currentSyncNoteId === String(noteId) && noteSyncSocket?.readyState === WebSocket.OPEN) {
+    return
+  }
+
+  disconnectNoteSync()
+  currentSyncNoteId = String(noteId)
+  syncStatus.value = 'connecting'
+
+  const token = localStorage.getItem('token')
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  noteSyncSocket = new WebSocket(`${protocol}//localhost:8081/ws/yjs/${noteId}?token=${token}`)
+
+  noteSyncSocket.onopen = () => {
+    syncStatus.value = 'connected'
+    startNoteHeartbeat()
+  }
+
+  noteSyncSocket.onmessage = (event) => {
+    if (!event.data) return
+
+    try {
+      const payload = JSON.parse(event.data)
+      if (payload.type === 'note-updated') {
+        applyRemoteNoteUpdate(payload)
+      }
+    } catch (error) {
+      console.error('解析笔记同步消息失败:', error)
+    }
+  }
+
+  noteSyncSocket.onerror = () => {
+    syncStatus.value = 'disconnected'
+  }
+
+  noteSyncSocket.onclose = () => {
+    stopNoteHeartbeat()
+    syncStatus.value = 'disconnected'
+    if (noteSyncSocket) {
+      noteSyncSocket = null
+    }
+  }
+}
+
 // 加载笔记详情
 const loadNoteDetail = async (noteId) => {
   try {
@@ -971,7 +1106,12 @@ const loadNoteDetail = async (noteId) => {
       visibility: res.data.visibility || 'PRIVATE',
       canEdit: res.data.canEdit !== false
     }
+    startOnlineCountPolling(noteId)
+    connectNoteSync(noteId)
   } catch (err) {
+    disconnectNoteSync()
+    stopOnlineCountPolling()
+    onlineCount.value = 0
     router.push('/note')
   }
 }
@@ -980,6 +1120,10 @@ const loadNoteDetail = async (noteId) => {
 watch(() => route.params.id, (newId) => {
   if (newId && route.name === 'NoteDetail') {
     loadNoteDetail(newId)
+  } else {
+    disconnectNoteSync()
+    stopOnlineCountPolling()
+    onlineCount.value = 0
   }
 }, {immediate: true})
 
@@ -1037,7 +1181,7 @@ const handleContextDelete = async () => {
   try {
     await ElMessageBox.confirm(`确定要删除该${data.type === 'NOTE' ? '笔记' : '文件夹'}吗？`, '提示', {
       type: 'warning',
-      confirmButtonText: '确定',
+      confirmButtonText: '确认',
       cancelButtonText: '取消'
     })
     if (data.type === 'NOTE') {
@@ -1088,13 +1232,18 @@ const handleContextRestore = async () => {
 // 右键 - 永久删除
 const handleContextPermanentDelete = async () => {
   hideContextMenu()
+  const data = contextMenuData.value
   try {
     await ElMessageBox.confirm('永久删除后无法恢复，确定要删除吗？', '警告', {
       type: 'error',
-      confirmButtonText: '确定',
+      confirmButtonText: '确认',
       cancelButtonText: '取消'
     })
-    await del(`/notes/${contextMenuData.value.id}/permanent`)
+    if (data.type === 'NOTE') {
+      await del(`/notes/${data.id}/permanent`)
+    } else {
+      await del(`/folders/${data.id}/permanent`)
+    }
     ElMessage.success('已永久删除')
     fetchTrashRootNodes()
   } catch (err) {
@@ -1206,17 +1355,6 @@ const autoSaveNote = () => {
 }
 
 // 监听内容变化自动保存
-watch(() => currentNote.value?.content, () => {
-  if (currentNote.value?.canEdit) {
-    autoSaveNote()
-  }
-})
-
-// 协同编辑同步状态
-const syncStatus = ref('')
-const handleSyncStatus = (status) => {
-  syncStatus.value = status
-}
 
 // 修改可见性
 const handleVisibilityChange = async (value) => {
@@ -1466,7 +1604,7 @@ const handleClearHistory = async () => {
   try {
     await ElMessageBox.confirm('确定要清空所有浏览历史吗？', '提示', {
       type: 'warning',
-      confirmButtonText: '确定',
+      confirmButtonText: '确认',
       cancelButtonText: '取消'
     })
     await del('/browse-history')

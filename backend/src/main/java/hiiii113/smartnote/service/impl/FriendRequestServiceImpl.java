@@ -68,6 +68,22 @@ public class FriendRequestServiceImpl extends ServiceImpl<FriendRequestMapper, F
             throw new BusinessException("对方已向你发送过好友申请，请先处理", Result.CODE_BAD_REQUEST);
         }
 
+        // 检查是否已有处理了的申请
+        FriendRequest existingRequestHandled = lambdaQuery()
+                .eq(FriendRequest::getRequesterId, requesterId)
+                .eq(FriendRequest::getReceiverId, receiverId)
+                .one();
+
+        if (existingRequestHandled != null)
+        {
+            // 重新设置为待处理状态，并更新时间
+            lambdaUpdate()
+                    .eq(FriendRequest::getId, existingRequestHandled.getId())
+                    .set(FriendRequest::getStatus, FriendRequestStatusTypeEnum.PENDING)
+                    .update(null);
+            return;
+        }
+
         // 创建好友申请
         FriendRequest request = new FriendRequest();
         request.setRequesterId(requesterId);

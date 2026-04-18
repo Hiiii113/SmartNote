@@ -22,9 +22,9 @@ public class FriendRequest
 
     private FriendRequestStatusTypeEnum status;
 
-    @TableField("created_at")
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
-    @TableField("updated_at")
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 }

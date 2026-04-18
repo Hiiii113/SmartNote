@@ -9,6 +9,7 @@ import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.FriendRequestService;
 import hiiii113.smartnote.service.UserService;
 import hiiii113.smartnote.utils.Result;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,16 +33,12 @@ public class FriendRequestController
      */
     @PostMapping
     @LogAnnotation(module = "好友申请", operator = "发送好友申请")
-    public Result<Void> sendRequest(@RequestBody SendFriendRequestDto dto)
+    public Result<Void> sendRequest(@Valid @RequestBody SendFriendRequestDto dto)
     {
         // 获取发送请求的用户 id
         Long requesterId = StpUtil.getLoginIdAsLong();
         // 对方账号：手机号或者邮箱
-        String account = dto.getAccount();
-        if (account == null || account.trim().isEmpty())
-        {
-            return Result.fail("请输入手机号或邮箱", Result.CODE_BAD_REQUEST);
-        }
+        String account = dto.getAccount().trim();
 
         // 根据手机号或邮箱查找接收者
         User receiver = userService.getUserByAccount(account);
@@ -53,7 +50,7 @@ public class FriendRequestController
 
         // 调用方法操作
         friendRequestService.sendRequest(requesterId, receiver.getId());
-        return Result.ok();
+        return Result.ok("好友申请已发送");
     }
 
     /**
@@ -80,12 +77,12 @@ public class FriendRequestController
      */
     @PutMapping("/{requestId}")
     @LogAnnotation(module = "好友申请", operator = "处理好友申请")
-    public Result<Void> handleRequest(@PathVariable Long requestId, @RequestBody HandleFriendRequestDto dto)
+    public Result<Void> handleRequest(@PathVariable Long requestId, @Valid @RequestBody HandleFriendRequestDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 处理请求
         friendRequestService.handleRequest(userId, requestId, dto.getAccept());
-        return Result.ok();
+        return Result.ok(dto.getAccept() ? "已同意好友申请" : "已拒绝好友申请");
     }
 }

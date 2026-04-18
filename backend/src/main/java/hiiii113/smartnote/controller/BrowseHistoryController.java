@@ -50,6 +50,6 @@ public class BrowseHistoryController
         // 清除浏览记录
         browseHistoryService.clearHistory(userId);
         // 返回
-        return Result.ok();
+        return Result.ok("浏览历史已清空");
     }
 }

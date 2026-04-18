@@ -259,7 +259,7 @@ const handleRequest = async (requestId, accept) => {
 // 删除好友
 const handleDeleteFriend = async (friend) => {
   try {
-    await ElMessageBox.confirm(`确定要删除好友 ${friend.friendName} 吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要删除好友 ${friend.friendName} 吗？`, '提示', { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' })
     await del(`/friends/${friend.friendId}`)
     ElMessage.success('已删除好友')
     fetchFriends()

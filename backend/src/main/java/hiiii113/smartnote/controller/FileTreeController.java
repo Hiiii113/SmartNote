@@ -70,6 +70,20 @@ public class FileTreeController
     }
 
     /**
+     * 获取回收站某文件夹下的子节点（已删除）
+     */
+    @GetMapping("/trash/{parentId}")
+    @LogAnnotation(module = "文件树", operator = "获取回收站子节点")
+    public Result<List<FileTreeNodeDto>> getTrashChildrenNodes(@PathVariable Long parentId)
+    {
+        // 获取用户 id
+        Long userId = StpUtil.getLoginIdAsLong();
+        // 获取
+        List<FileTreeNodeDto> res = fileTreeService.getTrashChildrenNodes(userId, parentId);
+        return Result.ok(res);
+    }
+
+    /**
      * 搜索节点
      * @param keyword 关键词
      * @return List<FileTreeNodeDto>
