@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 用户信息的 controller
+ * 用户信息
  */
 @RestController
 @RequestMapping("/users")
@@ -24,6 +24,7 @@ public class UserController
 
     /**
      * 登录
+     *
      * @param dto 相关数据
      * @return String 类型的 Token
      */
@@ -41,6 +42,7 @@ public class UserController
 
     /**
      * 注册
+     *
      * @param dto 相关数据
      */
     @PostMapping
@@ -67,6 +69,7 @@ public class UserController
 
     /**
      * 获取用户信息
+     *
      * @return User
      */
     @GetMapping("/info")
@@ -82,6 +85,7 @@ public class UserController
 
     /**
      * 修改用户名
+     *
      * @param dto 相关数据
      */
     @PutMapping("/username")
@@ -97,6 +101,7 @@ public class UserController
 
     /**
      * 修改座右铭
+     *
      * @param dto 相关数据
      */
     @PutMapping("/motto")
@@ -112,6 +117,7 @@ public class UserController
 
     /**
      * 修改密码
+     *
      * @param dto 相关数据
      */
     @PutMapping("/password")
@@ -127,6 +133,7 @@ public class UserController
 
     /**
      * 修改头像
+     *
      * @param file 头像文件
      */
     @PostMapping("/avatar")

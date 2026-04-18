@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 文件树的 controller
+ * 文件树
  */
 @RestController
 @RequestMapping("/nodes")
@@ -22,6 +22,7 @@ public class FileTreeController
 
     /**
      * 获取主页面根目录节点
+     *
      * @return List<FileTreeNodeDto>
      */
     @GetMapping("/root")
@@ -38,6 +39,7 @@ public class FileTreeController
 
     /**
      * 获取某个文件夹下的子节点
+     *
      * @param parentId 文件夹 id
      * @return List<FileTreeNodeDto>
      */
@@ -55,6 +57,7 @@ public class FileTreeController
 
     /**
      * 获取回收站根目录节点
+     *
      * @return List<FileTreeNodeDto>
      */
     @GetMapping("/trash/root")
@@ -85,6 +88,7 @@ public class FileTreeController
 
     /**
      * 搜索节点
+     *
      * @param keyword 关键词
      * @return List<FileTreeNodeDto>
      */

@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 文件夹的 controller
+ * 文件夹
  */
 @RestController
 @RequestMapping("/folders")
@@ -22,6 +22,7 @@ public class FolderController
 
     /**
      * 创建文件夹
+     *
      * @param dto 相关数据
      */
     @PostMapping
@@ -37,8 +38,9 @@ public class FolderController
 
     /**
      * 重命名文件夹
+     *
      * @param folderId 文件夹 id
-     * @param dto 相关数据 dto
+     * @param dto      相关数据 dto
      */
     @PutMapping("/{folderId}")
     @LogAnnotation(module = "文件夹", operator = "重命名文件夹")
@@ -54,6 +56,7 @@ public class FolderController
     /**
      * 删除文件夹
      * 逻辑删除，设置字段 is_deleted = 1
+     *
      * @param folderId 文件夹 id
      */
     @DeleteMapping("/{folderId}")
@@ -69,6 +72,7 @@ public class FolderController
 
     /**
      * 恢复文件夹
+     *
      * @param folderId 需要恢复的文件夹 id
      */
     @PostMapping("/{folderId}/restore")

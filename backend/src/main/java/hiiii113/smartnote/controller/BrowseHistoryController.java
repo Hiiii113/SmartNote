@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 浏览历史 controller
+ * 浏览历史
  */
 @RestController
 @RequestMapping("/browse-history")

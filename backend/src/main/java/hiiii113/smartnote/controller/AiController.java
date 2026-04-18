@@ -22,7 +22,7 @@ import org.springframework.web.client.ResourceAccessException;
 import java.util.List;
 
 /**
- * AI 相关接口 controller
+ * AI 分析
  */
 @RestController
 @RequestMapping("/ai")

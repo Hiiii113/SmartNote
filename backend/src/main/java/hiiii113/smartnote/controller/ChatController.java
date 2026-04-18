@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 聊天接口 controller
+ * 聊天
  */
 @RestController
 @RequestMapping("/chat")

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 好友关系 controller
+ * 好友关系
  */
 @RestController
 @RequestMapping("/friends")

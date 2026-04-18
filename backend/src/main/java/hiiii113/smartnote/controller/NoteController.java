@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 笔记的 controller
+ * 笔记
  */
 @RestController
 @RequestMapping("/notes")
@@ -29,6 +29,7 @@ public class NoteController
 
     /**
      * 新建笔记
+     *
      * @param dto 相关数据 dto
      */
     @PostMapping
@@ -44,6 +45,7 @@ public class NoteController
 
     /**
      * 获取笔记详情
+     *
      * @param noteId 笔记 id
      * @return NoteDetailDto
      */
@@ -60,8 +62,9 @@ public class NoteController
 
     /**
      * 更新笔记
+     *
      * @param noteId 笔记 id
-     * @param dto 相关数据
+     * @param dto    相关数据
      */
     @PutMapping("/{noteId}")
     @LogAnnotation(module = "笔记", operator = "更新笔记")
@@ -79,6 +82,7 @@ public class NoteController
     /**
      * 删除笔记
      * 设置 is-deleted 字段为 1
+     *
      * @param noteId 笔记 id
      */
     @DeleteMapping("/{noteId}")
@@ -94,6 +98,7 @@ public class NoteController
 
     /**
      * 恢复笔记
+     *
      * @param noteId 笔记 id
      */
     @PostMapping("/{noteId}/restore")
@@ -109,6 +114,7 @@ public class NoteController
 
     /**
      * 永久删除笔记
+     *
      * @param noteId 笔记 id
      */
     @DeleteMapping("/{noteId}/permanent")
@@ -124,7 +130,8 @@ public class NoteController
 
     /**
      * 修改笔记可见性
-     * @param noteId 笔记 id
+     *
+     * @param noteId     笔记 id
      * @param visibility 可见性
      */
     @PutMapping("/{noteId}/visibility")
@@ -140,6 +147,7 @@ public class NoteController
 
     /**
      * 获取最近常看的 3 篇笔记
+     *
      * @return List<Note>
      */
     @GetMapping("/hot")
@@ -155,6 +163,7 @@ public class NoteController
 
     /**
      * 获取笔记协同在线人数
+     *
      * @param noteId 笔记 id
      * @return 在线人数
      */

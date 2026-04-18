@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 笔记权限 controller
+ * 笔记权限
  */
 @RestController
 @RequestMapping("/notes/{noteId}/permissions")
