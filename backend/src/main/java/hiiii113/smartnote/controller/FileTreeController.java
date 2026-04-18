@@ -20,7 +20,10 @@ public class FileTreeController
 {
     private final FileTreeService fileTreeService;
 
-    // 获取主页面根目录节点
+    /**
+     * 获取主页面根目录节点
+     * @return List<FileTreeNodeDto>
+     */
     @GetMapping("/root")
     @LogAnnotation(module = "文件树", operator = "获取根目录")
     public Result<List<FileTreeNodeDto>> getRootNodes()
@@ -29,10 +32,15 @@ public class FileTreeController
         Long userId = StpUtil.getLoginIdAsLong();
         // 获取 root 并返回
         List<FileTreeNodeDto> res = fileTreeService.getRootNodes(userId);
+        // 返回
         return Result.ok(res);
     }
 
-    // 获取某个文件夹下的子节点
+    /**
+     * 获取某个文件夹下的子节点
+     * @param parentId 文件夹 id
+     * @return List<FileTreeNodeDto>
+     */
     @GetMapping("/{parentId}")
     @LogAnnotation(module = "文件树", operator = "获取子节点")
     public Result<List<FileTreeNodeDto>> getChildrenNodes(@PathVariable Long parentId)
@@ -41,10 +49,14 @@ public class FileTreeController
         Long userId = StpUtil.getLoginIdAsLong();
         // 获取子节点并返回
         List<FileTreeNodeDto> res = fileTreeService.getChildrenNodes(userId, parentId);
+        // 返回
         return Result.ok(res);
     }
 
-    // 获取回收站根目录节点
+    /**
+     * 获取回收站根目录节点
+     * @return List<FileTreeNodeDto>
+     */
     @GetMapping("/trash/root")
     @LogAnnotation(module = "文件树", operator = "获取回收站")
     public Result<List<FileTreeNodeDto>> getTrashRootNodes()
@@ -53,10 +65,15 @@ public class FileTreeController
         Long userId = StpUtil.getLoginIdAsLong();
         // 获取回收站根目录的节点
         List<FileTreeNodeDto> res = fileTreeService.getTrashRootNodes(userId);
+        // 返回
         return Result.ok(res);
     }
 
-    // 搜索节点
+    /**
+     * 搜索节点
+     * @param keyword 关键词
+     * @return List<FileTreeNodeDto>
+     */
     @GetMapping("/search")
     @LogAnnotation(module = "文件树", operator = "搜索节点")
     public Result<List<FileTreeNodeDto>> searchNodes(@RequestParam String keyword)
@@ -65,6 +82,7 @@ public class FileTreeController
         Long userId = StpUtil.getLoginIdAsLong();
         // 搜索节点
         List<FileTreeNodeDto> res = fileTreeService.searchNodes(userId, keyword);
+        // 返回
         return Result.ok(res);
     }
 }

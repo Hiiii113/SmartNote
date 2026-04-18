@@ -146,21 +146,54 @@
             </div>
           </div>
         </el-tab-pane>
-        <el-tab-pane :label="`发出的申请 (${sentRequests.length})`">
-          <el-empty v-if="sentRequests.length === 0" description="暂无申请" :image-size="60" />
-          <div v-else class="request-list">
-            <div v-for="request in sentRequests" :key="request.id" class="request-item">
-              <div class="request-info">
-                <div class="request-name">申请给: {{ request.receiverName || `用户${request.receiverId}` }}</div>
-                <div class="request-time">{{ formatTime(request.createdAt) }}</div>
-              </div>
-              <el-tag :type="getStatusType(request.status)" size="small">
-                {{ getStatusText(request.status) }}
-              </el-tag>
-            </div>
-          </div>
-        </el-tab-pane>
       </el-tabs>
+    </el-dialog>
+
+    <!-- 好友详情弹窗 -->
+    <el-dialog v-model="showFriendDetail" title="好友详情" width="400px">
+      <div v-if="currentFriendDetail" class="friend-detail">
+        <div class="detail-avatar">
+          <el-avatar :size="80" :src="getAvatarUrl(currentFriendDetail.friendAvatar)" />
+        </div>
+        <div class="detail-info">
+          <div class="detail-item">
+            <span class="label">用户名：</span>
+            <span class="value">{{ currentFriendDetail.friendName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">座右铭：</span>
+            <span class="value">{{ currentFriendDetail.friendMotto || '这个人很懒，什么都没写' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">分组：</span>
+            <span v-if="!editingGroup" class="value">{{ currentFriendDetail.groupName || '默认' }}</span>
+            <el-input
+              v-else
+              v-model="newGroupName"
+              size="small"
+              style="width: 120px"
+              placeholder="输入分组名"
+            />
+            <el-button
+              v-if="!editingGroup"
+              type="primary"
+              text
+              size="small"
+              @click="startEditGroup"
+            >
+              修改
+            </el-button>
+            <template v-else>
+              <el-button type="primary" size="small" @click="saveGroup">保存</el-button>
+              <el-button size="small" @click="editingGroup = false">取消</el-button>
+            </template>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="danger" @click="handleDeleteFriend">删除好友</el-button>
+        <el-button @click="showFriendDetail = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -170,21 +203,18 @@ import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat.js'
 import { get, post, put, del } from '@/utils/request.js'
+import { getAvatarUrl } from '@/utils/common.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Bell, ArrowRight, MoreFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const chatStore = useChatStore()
-const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
 // 好友列表
 const friends = ref([])
 
 // 收到的申请
 const receivedRequests = ref([])
-
-// 发出的申请
-const sentRequests = ref([])
 
 // 待处理的申请数量
 const pendingCount = computed(() => receivedRequests.value.filter(r => r.status === 'PENDING').length)
@@ -201,18 +231,15 @@ const currentUserAvatar = ref('')
 // 弹窗状态
 const showAddDialog = ref(false)
 const showRequestsDialog = ref(false)
+const showFriendDetail = ref(false)
+const currentFriendDetail = ref(null)
+const editingGroup = ref(false)
+const newGroupName = ref('')
 
 // 添加好友表单
 const addForm = ref({
   contact: ''
 })
-
-// 获取头像URL
-const getAvatarUrl = (avatar) => {
-  if (!avatar) return defaultAvatar
-  if (avatar.startsWith('http')) return avatar
-  return 'http://localhost:8081/' + avatar
-}
 
 // 获取好友列表
 const fetchFriends = async () => {
@@ -229,16 +256,6 @@ const fetchReceivedRequests = async () => {
   try {
     const res = await get('/friend-requests/received')
     receivedRequests.value = res.data || []
-  } catch (err) {
-    console.error('获取申请列表失败:', err)
-  }
-}
-
-// 获取发出的好友申请
-const fetchSentRequests = async () => {
-  try {
-    const res = await get('/friend-requests/sent')
-    sentRequests.value = res.data || []
   } catch (err) {
     console.error('获取申请列表失败:', err)
   }
@@ -290,13 +307,12 @@ const handleAddFriend = async () => {
     return
   }
   try {
-    await post('/friend-requests', { contact: addForm.value.contact })
+    await post('/friend-requests', { account: addForm.value.contact })
     ElMessage.success('好友申请已发送')
     showAddDialog.value = false
     addForm.value.contact = ''
-    fetchSentRequests()
   } catch (err) {
-    ElMessage.error(err.msg || '发送失败')
+    if (err.msg) ElMessage.error(err.msg)
   }
 }
 
@@ -308,13 +324,40 @@ const handleRequest = async (requestId, accept) => {
     fetchReceivedRequests()
     fetchFriends()
   } catch (err) {
-    ElMessage.error(err.msg || '操作失败')
+    if (err.msg) ElMessage.error(err.msg)
   }
 }
 
 // 查看好友资料
 const showFriendInfo = () => {
-  ElMessage.info('查看资料功能开发中')
+  if (!chatStore.currentFriend) return
+  currentFriendDetail.value = chatStore.currentFriend
+  editingGroup.value = false
+  newGroupName.value = ''
+  showFriendDetail.value = true
+}
+
+// 开始编辑分组
+const startEditGroup = () => {
+  newGroupName.value = currentFriendDetail.value.groupName || '默认'
+  editingGroup.value = true
+}
+
+// 保存分组
+const saveGroup = async () => {
+  if (!newGroupName.value.trim()) {
+    ElMessage.warning('分组名不能为空')
+    return
+  }
+  try {
+    await put(`/friends/group/${currentFriendDetail.value.friendId}`, { group: newGroupName.value.trim() })
+    ElMessage.success('分组修改成功')
+    currentFriendDetail.value.groupName = newGroupName.value.trim()
+    editingGroup.value = false
+    fetchFriends()
+  } catch (err) {
+    if (err.msg) ElMessage.error(err.msg)
+  }
 }
 
 // 删除好友
@@ -325,31 +368,12 @@ const handleDeleteFriend = async () => {
     await del(`/friends/${chatStore.currentFriend.friendId}`)
     ElMessage.success('已删除好友')
     chatStore.setCurrentFriend(null)
+    showFriendDetail.value = false
     fetchFriends()
   } catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error(err.msg || '删除失败')
+    if (err !== 'cancel' && err.msg) {
+      ElMessage.error(err.msg)
     }
-  }
-}
-
-// 获取状态类型
-const getStatusType = (status) => {
-  switch (status) {
-    case 'PENDING': return 'warning'
-    case 'ACCEPTED': return 'success'
-    case 'REJECTED': return 'info'
-    default: return ''
-  }
-}
-
-// 获取状态文本
-const getStatusText = (status) => {
-  switch (status) {
-    case 'PENDING': return '待处理'
-    case 'ACCEPTED': return '已同意'
-    case 'REJECTED': return '已拒绝'
-    default: return status
   }
 }
 
@@ -376,7 +400,6 @@ onMounted(async () => {
 
   // 获取好友申请
   fetchReceivedRequests()
-  fetchSentRequests()
 
   // 获取未读消息数
   chatStore.fetchUnreadCount()
@@ -646,5 +669,41 @@ onUnmounted(() => {
 .request-actions {
   display: flex;
   gap: 8px;
+}
+
+/* 好友详情弹窗 */
+.friend-detail {
+  text-align: center;
+}
+
+.detail-avatar {
+  margin-bottom: 20px;
+}
+
+.detail-info {
+  text-align: left;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-item .label {
+  width: 70px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.detail-item .value {
+  flex: 1;
+  color: #303133;
+  font-size: 14px;
 }
 </style>

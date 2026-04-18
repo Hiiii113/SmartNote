@@ -40,6 +40,12 @@ public class Result<T>
     }
 
     // 成功（201）
+    public static <T> Result<T> created()
+    {
+        return build(CODE_CREATED, "操作成功", null);
+    }
+
+    // 成功（201）
     public static <T> Result<T> created(String message)
     {
         return build(CODE_CREATED, message, null);

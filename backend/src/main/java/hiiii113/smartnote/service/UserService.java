@@ -5,6 +5,9 @@ import hiiii113.smartnote.dto.*;
 import hiiii113.smartnote.entity.User;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 用户 service
+ */
 public interface UserService extends IService<User>
 {
     // 登录

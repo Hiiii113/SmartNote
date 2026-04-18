@@ -22,7 +22,7 @@ public class CacheConfig
     {
         return Caffeine.newBuilder()
                 .maximumSize(1000) // 最多 1000 条笔记
-                .expireAfterAccess(30, TimeUnit.MINUTES);
+                .expireAfterAccess(30, TimeUnit.MINUTES); // 30 分钟过期
     }
 
     // 最近常看笔记缓存：每个用户最多 3 篇，1 小时过期
@@ -31,15 +31,15 @@ public class CacheConfig
     {
         return Caffeine.newBuilder()
                 .maximumSize(10000) // 最多 10000 个用户
-                .expireAfterWrite(1, TimeUnit.HOURS);
+                .expireAfterWrite(1, TimeUnit.HOURS); // 1 小时过期
     }
 
     @Bean
     public CacheManager cacheManager()
     {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
-        cacheManager.registerCustomCache("noteCache", noteCacheConfig().build());
-        cacheManager.registerCustomCache("hotNotes", hotNotesCacheConfig().build());
+        cacheManager.registerCustomCache("noteCache", noteCacheConfig().build()); // 热点笔记
+        cacheManager.registerCustomCache("hotNotes", hotNotesCacheConfig().build()); // 最近常看
         return cacheManager;
     }
 }

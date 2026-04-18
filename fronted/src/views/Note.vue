@@ -457,36 +457,56 @@
     </el-dialog>
 
     <!-- AI 助手弹窗 -->
-    <el-dialog v-model="aiAssistantVisible" title="AI 助手" width="600px" class="ai-assistant-dialog">
+    <el-dialog v-model="aiAssistantVisible" title="AI 助手" width="700px" class="ai-assistant-dialog">
       <div class="ai-assistant-content">
-        <div class="ai-chat-header">
-          <el-button type="primary" text size="small" @click="startNewConversation" :disabled="aiStreaming">
-            <el-icon><Plus /></el-icon>
-            新对话
-          </el-button>
-        </div>
-        <div class="ai-chat-messages">
-          <div v-if="aiMessages.length === 0" class="ai-welcome">
-            <el-icon :size="48" color="#409eff"><Promotion /></el-icon>
-            <p>你好！我是 AI 助手，有什么可以帮助你的吗？</p>
+        <!-- 会话列表侧边栏 -->
+        <div class="ai-sidebar">
+          <div class="ai-sidebar-header">
+            <span>历史对话</span>
+            <el-button type="primary" text size="small" @click="startNewConversation" :disabled="aiStreaming">
+              <el-icon><Plus /></el-icon>
+              新对话
+            </el-button>
           </div>
-          <div v-for="(msg, index) in aiMessages" :key="index" class="ai-message" :class="msg.role">
-            <!-- 流式输出中用普通文本，完成后用 MdPreview -->
-            <div v-if="msg.streaming" class="message-content streaming">{{ msg.content }}</div>
-            <MdPreview v-else :model-value="msg.content" class="message-content" />
+          <div class="ai-conversation-list">
+            <el-empty v-if="conversationList.length === 0" description="暂无历史对话" :image-size="40" />
+            <div
+              v-for="conv in conversationList"
+              :key="conv.conversationId"
+              :class="['conversation-item', { active: aiConversationId === conv.conversationId }]"
+              @click="selectConversation(conv.conversationId)"
+            >
+              <el-icon><ChatDotRound /></el-icon>
+              <span class="conv-id">{{ conv.conversationId.slice(0, 8) }}</span>
+              <el-icon class="delete-icon" @click.stop="handleDeleteConversation(conv.conversationId)"><Delete /></el-icon>
+            </div>
           </div>
         </div>
-        <div class="ai-input-area">
-          <el-input
-            v-model="aiInput"
-            placeholder="输入你的问题..."
-            @keyup.enter="sendAiMessage"
-            :disabled="aiStreaming"
-          >
-            <template #append>
-              <el-button :icon="Promotion" @click="sendAiMessage" :loading="aiStreaming" />
-            </template>
-          </el-input>
+        <!-- 聊天区域 -->
+        <div class="ai-chat-area">
+          <div class="ai-chat-messages">
+            <div v-if="aiMessages.length === 0" class="ai-welcome">
+              <el-icon :size="48" color="#409eff"><Promotion /></el-icon>
+              <p>你好！我是 AI 助手，有什么可以帮助你的吗？</p>
+            </div>
+            <div v-for="(msg, index) in aiMessages" :key="index" class="ai-message" :class="msg.role">
+              <!-- 流式输出中用普通文本，完成后用 MdPreview -->
+              <div v-if="msg.streaming" class="message-content streaming">{{ msg.content }}</div>
+              <MdPreview v-else :model-value="msg.content" class="message-content" />
+            </div>
+          </div>
+          <div class="ai-input-area">
+            <el-input
+              v-model="aiInput"
+              placeholder="输入你的问题..."
+              @keyup.enter="sendAiMessage"
+              :disabled="aiStreaming"
+            >
+              <template #append>
+                <el-button :icon="Promotion" @click="sendAiMessage" :loading="aiStreaming" />
+              </template>
+            </el-input>
+          </div>
         </div>
       </div>
     </el-dialog>
@@ -497,9 +517,11 @@
 import {onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {del, get, post, put} from '@/utils/request.js'
+import {getAvatarUrl} from '@/utils/common.js'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {
   ArrowDown,
+  ChatDotRound,
   Check,
   Clock,
   Delete,
@@ -608,16 +630,6 @@ const passwordForm = ref({
 const showShareDialog = ref(false)
 const friends = ref([])
 const sharePermissions = ref({})
-const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
-
-// 获取头像完整URL
-const getAvatarUrl = (avatar) => {
-  if (!avatar) return defaultAvatar
-  // 如果已经是完整URL，直接返回
-  if (avatar.startsWith('http')) return avatar
-  // 否则拼接后端地址
-  return 'http://localhost:8081/' + avatar
-}
 
 // AI 分析
 const aiLoading = ref(false)
@@ -631,16 +643,67 @@ const aiInput = ref('')
 const aiMessages = ref([])
 const aiStreaming = ref(false)  // 是否正在流式输出
 const aiConversationId = ref('')  // 会话ID，用于上下文记忆
+const conversationList = ref([])  // 会话列表
+
+// 获取会话列表
+const fetchConversationList = async () => {
+  try {
+    const res = await get('/ai/conversations')
+    conversationList.value = (res.data || []).map(id => ({ conversationId: id }))
+  } catch (err) {
+    console.error('获取会话列表失败:', err)
+  }
+}
+
+// 选择会话
+const selectConversation = async (conversationId) => {
+  aiConversationId.value = conversationId
+  aiMessages.value = []
+  try {
+    const res = await get(`/ai/conversation/${conversationId}`)
+    if (res.data) {
+      aiMessages.value = res.data.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        streaming: false
+      }))
+    }
+  } catch (err) {
+    console.error('获取会话历史失败:', err)
+  }
+}
+
+// 删除会话
+const handleDeleteConversation = async (conversationId) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该对话吗？', '提示', { type: 'warning' })
+    await del(`/ai/conversation/${conversationId}`)
+    ElMessage.success('删除成功')
+    // 刷新会话列表
+    await fetchConversationList()
+    // 如果删除的是当前会话，清空消息
+    if (aiConversationId.value === conversationId) {
+      aiConversationId.value = ''
+      aiMessages.value = []
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
+}
 
 // 打开 AI 助手
-const openAiAssistant = () => {
+const openAiAssistant = async () => {
   aiAssistantVisible.value = true
+  await fetchConversationList()
 }
 
 // 新建对话
-const startNewConversation = () => {
+const startNewConversation = async () => {
   aiConversationId.value = crypto.randomUUID()
   aiMessages.value = []
+  await fetchConversationList()
 }
 
 // 发送消息给 AI（非流式）
@@ -909,7 +972,6 @@ const loadNoteDetail = async (noteId) => {
       canEdit: res.data.canEdit !== false
     }
   } catch (err) {
-    ElMessage.error(err.msg || '获取笔记详情失败')
     router.push('/note')
   }
 }
@@ -1942,14 +2004,80 @@ const handleLogout = async () => {
 /* AI 助手弹窗 */
 .ai-assistant-content {
   display: flex;
-  flex-direction: column;
   height: 450px;
+  gap: 12px;
 }
 
-.ai-chat-header {
+/* 会话列表侧边栏 */
+.ai-sidebar {
+  width: 180px;
+  border-right: 1px solid #e4e7ed;
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
+  flex-direction: column;
+}
+
+.ai-sidebar-header {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e4e7ed;
+  font-size: 13px;
+  font-weight: 500;
+  color: #606266;
+}
+
+.ai-conversation-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.conversation-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #606266;
+  transition: all 0.2s;
+}
+
+.conversation-item:hover {
+  background: #f5f7fa;
+}
+
+.conversation-item.active {
+  background: #ecf5ff;
+  color: #409eff;
+}
+
+.conversation-item .conv-id {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-item .delete-icon {
+  opacity: 0;
+  font-size: 14px;
+  color: #f56c6c;
+  transition: opacity 0.2s;
+}
+
+.conversation-item:hover .delete-icon {
+  opacity: 1;
+}
+
+/* 聊天区域 */
+.ai-chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .ai-chat-messages {

@@ -23,6 +23,7 @@ public class FolderServiceImpl extends ServiceImpl<FolderMapper, Folder> impleme
         Folder f = lambdaQuery()
                 .eq(Folder::getUserId, userId)
                 .eq(Folder::getName, dto.getName()).one();
+
         // 查找到了同名的
         if (f != null)
         {
@@ -101,7 +102,7 @@ public class FolderServiceImpl extends ServiceImpl<FolderMapper, Folder> impleme
             throw new BusinessException("文件夹不存在", Result.CODE_NOT_FOUND);
         }
 
-        // 恢复：设置 is_deleted = 0，parentId = 0（放回根目录），path = /root
+        // 设置 is_deleted = 0，parentId = 0（放回根目录），path = /root
         folder.setIsDeleted(0);
         folder.setDeletedAt(null);
         folder.setParentId(0L);

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.BinaryWebSocketHandler;
 
@@ -15,13 +16,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Yjs WebSocket 处理器
+ * Note WebSocket 处理器
  * 实现笔记协同编辑的广播功能
  * <p>
- * Yjs 同步协议：
- * - 客户端连接后发送二进制消息
- * - 服务端广播给同一房间的其他客户端
- * - 支持多用户同时编辑同一笔记
  */
 @Slf4j
 @Component
@@ -45,6 +42,7 @@ public class YjsWebSocketHandler extends BinaryWebSocketHandler
             return;
         }
 
+        // 添加
         noteRooms.computeIfAbsent(noteId, k -> ConcurrentHashMap.newKeySet()).add(session);
         sessionNoteMap.put(session.getId(), noteId);
 
@@ -92,6 +90,20 @@ public class YjsWebSocketHandler extends BinaryWebSocketHandler
         }
 
         log.debug("笔记 {} 广播消息给 {} 个用户", noteId, broadcastCount);
+    }
+
+    // 处理心跳消息
+    @Override
+    protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message)
+    {
+        String payload = message.getPayload();
+        // 心跳消息直接忽略，不广播
+        if (payload.contains("\"type\":\"heartbeat\""))
+        {
+            return;
+        }
+        // 其他文本消息也忽略（Yjs 只使用二进制消息）
+        log.warn("收到非心跳的文本消息，已忽略: {}", payload);
     }
 
     @Override

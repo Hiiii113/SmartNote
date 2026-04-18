@@ -15,9 +15,6 @@ public class UpdateNoteDto
     // 内容
     private String content;
 
-    // 可见性
-    private NoteVisibilityTypeEnum visibility;
-
     // 标签
     private String tags;
 }

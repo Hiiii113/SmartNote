@@ -1,19 +1,22 @@
 package hiiii113.smartnote.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import hiiii113.smartnote.dto.NotePermissionDto;
 import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.entity.NotePermission;
+import hiiii113.smartnote.entity.User;
 import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
 import hiiii113.smartnote.exception.BusinessException;
 import hiiii113.smartnote.mapper.NoteMapper;
 import hiiii113.smartnote.mapper.NotePermissionMapper;
+import hiiii113.smartnote.mapper.UserMapper;
 import hiiii113.smartnote.service.NotePermissionService;
 import hiiii113.smartnote.utils.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 笔记权限 service 实现类
@@ -23,6 +26,7 @@ import java.util.List;
 public class NotePermissionServiceImpl extends ServiceImpl<NotePermissionMapper, NotePermission> implements NotePermissionService
 {
     private final NoteMapper noteMapper;
+    private final UserMapper userMapper;
 
     // 设置用户权限
     @Override
@@ -79,11 +83,14 @@ public class NotePermissionServiceImpl extends ServiceImpl<NotePermissionMapper,
 
     // 获取笔记的所有授权用户
     @Override
-    public List<NotePermission> getNotePermissions(Long noteId)
+    public List<NotePermissionDto> getNotePermissions(Long noteId)
     {
         return lambdaQuery()
                 .eq(NotePermission::getNoteId, noteId)
-                .list();
+                .list()
+                .stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
     // 检查用户是否有权限
@@ -107,5 +114,23 @@ public class NotePermissionServiceImpl extends ServiceImpl<NotePermissionMapper,
 
         // 两个都有的时候才返回 true
         return permission != null && permission.getCanEdit() == 1;
+    }
+
+    private NotePermissionDto convertToDto(NotePermission permission)
+    {
+        NotePermissionDto dto = new NotePermissionDto();
+        dto.setId(permission.getId());
+        dto.setUserId(permission.getUserId());
+        dto.setCanEdit(permission.getCanEdit());
+        dto.setCreatedAt(permission.getCreatedAt());
+
+        // 查询用户信息
+        User user = userMapper.selectById(permission.getUserId());
+        if (user != null)
+        {
+            dto.setUsername(user.getUsername());
+            dto.setAvatar(user.getAvatar());
+        }
+        return dto;
     }
 }

@@ -5,9 +5,11 @@ import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.mapper.NoteMapper;
 import hiiii113.smartnote.service.NoteCacheService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NoteCacheServiceImpl implements NoteCacheService
@@ -22,8 +24,8 @@ public class NoteCacheServiceImpl implements NoteCacheService
     )
     public NoteDetailDto getNodeDetailCache(Long noteId)
     {
-
         // 查询数据库
+        log.info("缓存命中失败，查询数据库，noteId={}", noteId);
         Note note = noteMapper.selectById(noteId);
 
         // 转换为 DTO 返回

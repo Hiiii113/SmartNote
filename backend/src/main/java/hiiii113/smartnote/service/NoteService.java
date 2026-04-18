@@ -9,6 +9,9 @@ import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
 
 import java.util.List;
 
+/**
+ * 笔记 service
+ */
 public interface NoteService extends IService<Note>
 {
     // 创建笔记

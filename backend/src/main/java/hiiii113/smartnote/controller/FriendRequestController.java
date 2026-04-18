@@ -4,7 +4,6 @@ import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.dto.FriendRequestDto;
 import hiiii113.smartnote.dto.HandleFriendRequestDto;
 import hiiii113.smartnote.dto.SendFriendRequestDto;
-import hiiii113.smartnote.entity.FriendRequest;
 import hiiii113.smartnote.entity.User;
 import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.FriendRequestService;
@@ -14,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 好友申请 controller
@@ -27,14 +25,19 @@ public class FriendRequestController
     private final FriendRequestService friendRequestService;
     private final UserService userService;
 
-    // 发送好友申请
+    /**
+     * 发送好友申请
+     *
+     * @param dto 相关数据
+     */
     @PostMapping
     @LogAnnotation(module = "好友申请", operator = "发送好友申请")
     public Result<Void> sendRequest(@RequestBody SendFriendRequestDto dto)
     {
         // 获取发送请求的用户 id
         Long requesterId = StpUtil.getLoginIdAsLong();
-        String account = dto.getContact(); // 手机号或者邮箱
+        // 对方账号：手机号或者邮箱
+        String account = dto.getAccount();
         if (account == null || account.trim().isEmpty())
         {
             return Result.fail("请输入手机号或邮箱", Result.CODE_BAD_REQUEST);
@@ -50,10 +53,14 @@ public class FriendRequestController
 
         // 调用方法操作
         friendRequestService.sendRequest(requesterId, receiver.getId());
-        return Result.ok("好友申请已发送");
+        return Result.ok();
     }
 
-    // 获取收到的好友申请列表
+    /**
+     * 获取收到的好友申请列表
+     *
+     * @return List<FriendRequestDto>
+     */
     @GetMapping("/received")
     @LogAnnotation(module = "好友申请", operator = "获取收到的好友申请")
     public Result<List<FriendRequestDto>> getReceivedRequests()
@@ -61,31 +68,16 @@ public class FriendRequestController
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 获取列表
-        List<FriendRequest> requests = friendRequestService.getReceivedRequests(userId);
-        // 转化成 dto 并返回给前端
-        List<FriendRequestDto> dtoList = requests.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        return Result.ok(dtoList);
+        List<FriendRequestDto> requests = friendRequestService.getReceivedRequests(userId);
+        return Result.ok(requests);
     }
 
-    // 获取发出的好友申请列表
-    @GetMapping("/sent")
-    @LogAnnotation(module = "好友申请", operator = "获取发出的好友申请")
-    public Result<List<FriendRequestDto>> getSentRequests()
-    {
-        // 获取用户 id
-        Long userId = StpUtil.getLoginIdAsLong();
-        // 获取列表
-        List<FriendRequest> requests = friendRequestService.getSentRequests(userId);
-        // 转化成 dto 并返回给前端
-        List<FriendRequestDto> dtoList = requests.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        return Result.ok(dtoList);
-    }
-
-    // 处理好友申请
+    /**
+     * 处理好友申请
+     *
+     * @param requestId 申请的 id
+     * @param dto       相关数据
+     */
     @PutMapping("/{requestId}")
     @LogAnnotation(module = "好友申请", operator = "处理好友申请")
     public Result<Void> handleRequest(@PathVariable Long requestId, @RequestBody HandleFriendRequestDto dto)
@@ -94,34 +86,6 @@ public class FriendRequestController
         Long userId = StpUtil.getLoginIdAsLong();
         // 处理请求
         friendRequestService.handleRequest(userId, requestId, dto.getAccept());
-        return Result.ok(dto.getAccept() ? "已同意好友申请" : "已拒绝好友申请");
-    }
-
-    // 转换为 DTO
-    private FriendRequestDto convertToDto(FriendRequest request)
-    {
-        FriendRequestDto dto = new FriendRequestDto();
-        dto.setId(request.getId());
-        dto.setRequesterId(request.getRequesterId());
-        dto.setReceiverId(request.getReceiverId());
-        dto.setStatus(request.getStatus().name());
-        dto.setCreatedAt(request.getCreatedAt());
-
-        // 查询申请人信息（名字和头像）
-        User requester = userService.getById(request.getRequesterId());
-        if (requester != null)
-        {
-            dto.setRequesterName(requester.getUsername());
-            dto.setRequesterAvatar(requester.getAvatar());
-        }
-
-        // 查询接收者信息（名字和头像）
-        User receiver = userService.getById(request.getReceiverId());
-        if (receiver != null)
-        {
-            dto.setReceiverName(receiver.getUsername());
-            dto.setReceiverAvatar(receiver.getAvatar());
-        }
-        return dto;
+        return Result.ok();
     }
 }

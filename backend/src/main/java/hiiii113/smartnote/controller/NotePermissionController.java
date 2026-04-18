@@ -4,19 +4,15 @@ import cn.dev33.satoken.stp.StpUtil;
 import hiiii113.smartnote.dto.NotePermissionDto;
 import hiiii113.smartnote.dto.SetPermissionDto;
 import hiiii113.smartnote.entity.Note;
-import hiiii113.smartnote.entity.NotePermission;
-import hiiii113.smartnote.entity.User;
 import hiiii113.smartnote.exception.BusinessException;
 import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.NotePermissionService;
 import hiiii113.smartnote.service.NoteService;
-import hiiii113.smartnote.service.UserService;
 import hiiii113.smartnote.utils.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 笔记权限 controller
@@ -28,28 +24,33 @@ public class NotePermissionController
 {
     private final NoteService noteService;
     private final NotePermissionService notePermissionService;
-    private final UserService userService;
 
-    // 获取笔记的权限列表（前端查看并操作）
+    /**
+     * 获取笔记的权限列表
+     *
+     * @param noteId 笔记 id
+     * @return List<NotePermissionDto>
+     */
     @GetMapping
     @LogAnnotation(module = "笔记权限", operator = "获取权限列表")
     public Result<List<NotePermissionDto>> getPermissions(@PathVariable Long noteId)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
-        // 校验笔记所有权
+        // 校验笔记所有权（只有所有者才能看到笔记的权限列表）
         checkOwner(userId, noteId);
 
         // 查询出 list
-        List<NotePermission> permissions = notePermissionService.getNotePermissions(noteId);
-        // 转换成 dto 并返回给前端
-        List<NotePermissionDto> dtoList = permissions.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        return Result.ok(dtoList);
+        List<NotePermissionDto> permissions = notePermissionService.getNotePermissions(noteId);
+        return Result.ok(permissions);
     }
 
-    // 设置用户权限
+    /**
+     * 设置用户权限
+     *
+     * @param noteId 笔记 id
+     * @param dto    相关数据
+     */
     @PostMapping
     @LogAnnotation(module = "笔记权限", operator = "设置权限")
     public Result<Void> setPermission(@PathVariable Long noteId, @RequestBody SetPermissionDto dto)
@@ -61,10 +62,15 @@ public class NotePermissionController
 
         // 设置权限
         notePermissionService.setPermission(noteId, dto.getUserId(), dto.getCanEdit());
-        return Result.ok("设置成功");
+        return Result.ok();
     }
 
-    // 删除用户权限
+    /**
+     * 删除用户权限
+     *
+     * @param noteId       笔记 id
+     * @param targetUserId 目标好友 id
+     */
     @DeleteMapping("/{targetUserId}")
     @LogAnnotation(module = "笔记权限", operator = "删除权限")
     public Result<Void> removePermission(@PathVariable Long noteId, @PathVariable Long targetUserId)
@@ -76,10 +82,16 @@ public class NotePermissionController
 
         // 删除权限
         notePermissionService.removePermission(noteId, targetUserId);
-        return Result.ok("删除成功");
+        return Result.ok();
     }
 
-    // 校验笔记所有权
+    /**
+     * 校验笔记所有权
+     * 查看当前笔记是否存在、是否是该用户的笔记
+     *
+     * @param userId 用户 id
+     * @param noteId 笔记 id
+     */
     private void checkOwner(Long userId, Long noteId)
     {
         Note note = noteService.getById(noteId);
@@ -91,24 +103,5 @@ public class NotePermissionController
         {
             throw new BusinessException("无权操作", Result.CODE_FORBIDDEN);
         }
-    }
-
-    // 转换为 DTO
-    private NotePermissionDto convertToDto(NotePermission permission)
-    {
-        NotePermissionDto dto = new NotePermissionDto();
-        dto.setId(permission.getId());
-        dto.setUserId(permission.getUserId());
-        dto.setCanEdit(permission.getCanEdit());
-        dto.setCreatedAt(permission.getCreatedAt());
-
-        // 查询用户信息
-        User user = userService.getById(permission.getUserId());
-        if (user != null)
-        {
-            dto.setUsername(user.getUsername());
-            dto.setAvatar(user.getAvatar());
-        }
-        return dto;
     }
 }

@@ -18,10 +18,4 @@ public interface BrowseHistoryService extends IService<BrowseHistory>
 
     // 清空浏览历史
     void clearHistory(Long userId);
-
-    // 删除单条浏览记录
-    void deleteHistory(Long userId, Long noteId);
-
-    // 获取某条笔记的浏览次数
-    int getHistoryCount(Long userId, Long noteId);
 }

@@ -19,7 +19,10 @@ public class FolderController
 {
     private final FolderService folderService;
 
-    // 创建文件夹
+    /**
+     * 创建文件夹
+     * @param dto 相关数据
+     */
     @PostMapping
     @LogAnnotation(module = "文件夹", operator = "创建文件夹")
     public Result<Void> createFolder(@RequestBody CreateFolderDto dto)
@@ -28,10 +31,14 @@ public class FolderController
         Long userId = StpUtil.getLoginIdAsLong();
         // 创建文件夹，传入 dto
         folderService.createFolder(userId, dto);
-        return Result.ok("创建成功！");
+        return Result.ok();
     }
 
-    // 重命名文件夹
+    /**
+     * 重命名文件夹
+     * @param folderId 文件夹 id
+     * @param dto 相关数据 dto
+     */
     @PutMapping("/{folderId}")
     @LogAnnotation(module = "文件夹", operator = "重命名文件夹")
     public Result<Void> renameFolder(@PathVariable Long folderId, @RequestBody RenameFolderDto dto)
@@ -40,34 +47,41 @@ public class FolderController
         Long userId = StpUtil.getLoginIdAsLong();
         // 重命名
         folderService.renameFolder(userId, folderId, dto.getName());
-        return Result.ok("重命名成功！");
+        return Result.ok();
     }
 
-    // 删除文件夹（逻辑删除，设置字段 is_deleted = 1）
+    /**
+     * 删除文件夹
+     * 逻辑删除，设置字段 is_deleted = 1
+     * @param folderId 文件夹 id
+     */
     @DeleteMapping("/{folderId}")
     @LogAnnotation(module = "文件夹", operator = "删除文件夹")
     public Result<Void> deleteFolder(@PathVariable Long folderId)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
-        // 删除（实际为更新字段）
+        // 删除
         folderService.deleteFolder(userId, folderId);
-        return Result.ok("移入回收站成功！");
+        return Result.ok();
     }
 
-    // 恢复文件夹
+    /**
+     * 恢复文件夹
+     * @param folderId 需要恢复的文件夹 id
+     */
     @PostMapping("/{folderId}/restore")
     @LogAnnotation(module = "文件夹", operator = "恢复文件夹")
     public Result<Void> restoreFolder(@PathVariable Long folderId)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
-        // 恢复文件夹（更新字段 is_deleted 为 0）
+        // 恢复文件夹
         folderService.restoreFolder(userId, folderId);
-        return Result.ok("恢复成功！");
+        return Result.ok();
     }
 
-    // 永久删除文件夹（物理删除）
+    // 永久删除文件夹
     @DeleteMapping("/{folderId}/permanent")
     @LogAnnotation(module = "文件夹", operator = "永久删除文件夹")
     public Result<Void> permanentDelete(@PathVariable Long folderId)
@@ -76,6 +90,6 @@ public class FolderController
         Long userId = StpUtil.getLoginIdAsLong();
         // 永久删除
         folderService.permanentDelete(userId, folderId);
-        return Result.ok("删除成功！");
+        return Result.ok();
     }
 }

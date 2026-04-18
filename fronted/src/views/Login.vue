@@ -120,14 +120,11 @@ const handleLogin = async () => {
       data.email = loginForm.account
     }
     const res = await post('/users/login', data)
-    // 保存token
     if (res.data) {
       localStorage.setItem('token', res.data)
     }
     ElMessage.success('登录成功！')
     router.push('/note')
-  } catch (err) {
-    ElMessage.error(err.msg || '请求失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -149,8 +146,6 @@ const handleRegister = async () => {
     await post('/users', data)
     ElMessage.success('注册成功！')
     currentView.value = '登录'
-  } catch (err) {
-    ElMessage.error(err.msg || '请求失败，请稍后重试')
   } finally {
     loading.value = false
   }

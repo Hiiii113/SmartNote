@@ -5,12 +5,12 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
+ * Spring MVC 静态资源映射
  * 把本地图片保存路径映射到 /upload 路径
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer
 {
-    // 注册一个资源处理器
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry)
     {

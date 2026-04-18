@@ -4,6 +4,9 @@ import hiiii113.smartnote.dto.FileTreeNodeDto;
 
 import java.util.List;
 
+/**
+ * 文件树 service
+ */
 public interface FileTreeService
 {
     // 获取节点（通用方法）

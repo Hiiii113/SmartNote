@@ -10,6 +10,8 @@ const instance = axios.create({
 
 // 防止多次弹窗跳转
 let isRedirecting = false
+// 防止网络错误重复弹窗
+let isShowingNetworkError = false
 
 // 请求拦截器
 instance.interceptors.request.use(
@@ -33,15 +35,20 @@ instance.interceptors.response.use(
       handleUnauthorized()
       return Promise.reject(response.data)
     } else {
-      ElMessage.error(msg || '请求失败')
+      ElMessage.error(msg || '操作失败')
       return Promise.reject(response.data)
     }
   },
   (error) => {
     if (error.response?.status === 401) {
       handleUnauthorized()
-    } else {
-      ElMessage.error(error.message || '网络错误')
+    } else if (!isShowingNetworkError) {
+      // 防止网络错误重复弹窗
+      isShowingNetworkError = true
+      ElMessage.error('网络异常，请稍后重试')
+      setTimeout(() => {
+        isShowingNetworkError = false
+      }, 3000)
     }
     return Promise.reject(error)
   },

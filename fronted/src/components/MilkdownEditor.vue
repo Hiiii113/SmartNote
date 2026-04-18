@@ -24,6 +24,7 @@ let ydoc = null
 let ytext = null
 let socket = null
 let isSynced = false
+let heartbeatTimer = null
 
 // 计算 WebSocket URL
 const wsUrl = computed(() => {
@@ -49,11 +50,14 @@ const initYjs = () => {
 
   // 创建原生 WebSocket 连接
   socket = new WebSocket(wsUrl.value)
-  socket.binaryType = 'arraybuffer'
+  socket.binaryType = 'arraybuffer' // 设置类型是二进制
 
   socket.onopen = () => {
     console.log('[Yjs] WebSocket 已连接')
     emit('sync-status', 'connected')
+
+    // 开始心跳
+    startHeartbeat()
 
     // 如果有初始内容，先设置到 ytext
     if (props.modelValue) {
@@ -100,6 +104,7 @@ const initYjs = () => {
   socket.onclose = (e) => {
     console.log('[Yjs] WebSocket 关闭:', e.code, e.reason)
     emit('sync-status', 'disconnected')
+    stopHeartbeat()
   }
 
   // 监听本地文档变化，发送给后端
@@ -113,6 +118,7 @@ const initYjs = () => {
 
 // 断开 Yjs 连接
 const disconnectYjs = () => {
+  stopHeartbeat()
   if (socket) {
     socket.close()
     socket = null
@@ -123,6 +129,25 @@ const disconnectYjs = () => {
     ytext = null
   }
   isSynced = false
+}
+
+// 开始心跳
+const startHeartbeat = () => {
+  stopHeartbeat()
+  heartbeatTimer = setInterval(() => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      // 发送心跳消息（文本格式，后端会忽略）
+      socket.send(JSON.stringify({ type: 'heartbeat' }))
+    }
+  }, 30000) // 30秒一次
+}
+
+// 停止心跳
+const stopHeartbeat = () => {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
 }
 
 // 更新编辑器内容（通过重建编辑器）

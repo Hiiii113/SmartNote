@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import hiiii113.smartnote.entity.Log;
 
 /**
- * 用于保存 log 实体
+ * 保存 log 实体 service
  */
 public interface LogHandler
 {

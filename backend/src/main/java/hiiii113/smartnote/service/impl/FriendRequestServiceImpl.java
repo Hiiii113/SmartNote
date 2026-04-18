@@ -1,11 +1,13 @@
 package hiiii113.smartnote.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import hiiii113.smartnote.dto.FriendRequestDto;
 import hiiii113.smartnote.entity.FriendRequest;
-import hiiii113.smartnote.entity.Friendship;
+import hiiii113.smartnote.entity.User;
 import hiiii113.smartnote.enums.FriendRequestStatusTypeEnum;
 import hiiii113.smartnote.exception.BusinessException;
 import hiiii113.smartnote.mapper.FriendRequestMapper;
+import hiiii113.smartnote.mapper.UserMapper;
 import hiiii113.smartnote.service.FriendRequestService;
 import hiiii113.smartnote.service.FriendshipService;
 import hiiii113.smartnote.utils.Result;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 好友申请 service 实现类
@@ -23,6 +26,7 @@ import java.util.List;
 public class FriendRequestServiceImpl extends ServiceImpl<FriendRequestMapper, FriendRequest> implements FriendRequestService
 {
     private final FriendshipService friendshipService;
+    private final UserMapper userMapper;
 
     // 发送好友申请
     @Override
@@ -74,23 +78,16 @@ public class FriendRequestServiceImpl extends ServiceImpl<FriendRequestMapper, F
 
     // 获取收到的好友申请列表
     @Override
-    public List<FriendRequest> getReceivedRequests(Long userId)
+    public List<FriendRequestDto> getReceivedRequests(Long userId)
     {
         return lambdaQuery()
                 .eq(FriendRequest::getReceiverId, userId)
                 .eq(FriendRequest::getStatus, FriendRequestStatusTypeEnum.PENDING) // 正在等待处理的
                 .orderByDesc(FriendRequest::getCreatedAt)
-                .list();
-    }
-
-    // 获取发出的好友申请列表
-    @Override
-    public List<FriendRequest> getSentRequests(Long userId)
-    {
-        return lambdaQuery()
-                .eq(FriendRequest::getRequesterId, userId)
-                .orderByDesc(FriendRequest::getCreatedAt)
-                .list();
+                .list()
+                .stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
     // 处理好友申请
@@ -121,9 +118,10 @@ public class FriendRequestServiceImpl extends ServiceImpl<FriendRequestMapper, F
         if (accept)
         {
             request.setStatus(FriendRequestStatusTypeEnum.ACCEPTED);
+            // 更新
             this.updateById(request);
             // 建立双向好友关系
-            createFriendship(request.getRequesterId(), request.getReceiverId());
+            friendshipService.createFriendship(request.getRequesterId(), request.getReceiverId());
         }
         else
         {
@@ -132,21 +130,30 @@ public class FriendRequestServiceImpl extends ServiceImpl<FriendRequestMapper, F
         }
     }
 
-    // 创建好友关系
-    private void createFriendship(Long userId, Long friendId)
+    private FriendRequestDto convertToDto(FriendRequest request)
     {
-        // userId 的字段
-        Friendship friendship1 = new Friendship();
-        friendship1.setUserId(userId);
-        friendship1.setFriendId(friendId);
-        friendship1.setGroupName("默认");
-        friendshipService.save(friendship1);
+        FriendRequestDto dto = new FriendRequestDto();
+        dto.setId(request.getId());
+        dto.setRequesterId(request.getRequesterId());
+        dto.setReceiverId(request.getReceiverId());
+        dto.setStatus(request.getStatus().name());
+        dto.setCreatedAt(request.getCreatedAt());
 
-        // friendId 的字段
-        Friendship friendship2 = new Friendship();
-        friendship2.setUserId(friendId);
-        friendship2.setFriendId(userId);
-        friendship2.setGroupName("默认");
-        friendshipService.save(friendship2);
+        // 查询申请人信息（名字和头像）
+        User requester = userMapper.selectById(request.getRequesterId());
+        if (requester != null)
+        {
+            dto.setRequesterName(requester.getUsername());
+            dto.setRequesterAvatar(requester.getAvatar());
+        }
+
+        // 查询接收者信息（名字和头像）
+        User receiver = userMapper.selectById(request.getReceiverId());
+        if (receiver != null)
+        {
+            dto.setReceiverName(receiver.getUsername());
+            dto.setReceiverAvatar(receiver.getAvatar());
+        }
+        return dto;
     }
 }

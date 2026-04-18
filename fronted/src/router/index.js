@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Note from '../views/Note.vue'
-import Friends from '../views/Friends.vue'
 import Chat from '../views/Chat.vue'
 
 const router = createRouter({
@@ -10,26 +9,26 @@ const router = createRouter({
     {
       path: '/',
       name: 'Login',
-      component: Login, // 登录（默认界面）
+      component: Login,
     },
     {
       path: '/note',
       name: 'Note',
-      component: Note, // 笔记界面
+      component: Note,
     },
     {
       path: '/note/:id',
       name: 'NoteDetail',
-      component: Note, // 根据笔记 id 进入对应笔记界面
+      component: Note,
     },
     {
       path: '/friends',
-      redirect: '/chat' // 聊天界面
+      redirect: '/chat'
     },
     {
       path: '/chat',
       name: 'Chat',
-      component: Chat, // 聊天界面
+      component: Chat,
     },
   ],
 })

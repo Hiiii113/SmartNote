@@ -42,6 +42,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     // 向量数据库内容最大长度
     private static final int MAX_VECTOR_CONTENT_LENGTH = 8000;
 
+    // 创建笔记
     @Override
     @Transactional
     public void createNote(Long userId, CreateNoteDto dto)
@@ -50,6 +51,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         Note n = lambdaQuery()
                 .eq(Note::getUserId, userId)
                 .eq(Note::getTitle, dto.getTitle()).one();
+
         // 查询到了
         if (n != null)
         {
@@ -88,26 +90,34 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         this.save(note);
 
         // 插入向量数据库
-        addNoteToVectorStore(note);
+        try
+        {
+            addNoteToVectorStore(note);
+        }
+        catch (Exception e)
+        {
+            log.warn("插入向量数据库失败: noteId = {}, error={}", note.getId(), e.getMessage());
+        }
     }
 
     // 将笔记添加到向量数据库
     private void addNoteToVectorStore(Note note)
     {
+        // 元数据，用于筛选
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("noteId", note.getId());
         metadata.put("userId", note.getUserId());
         metadata.put("title", note.getTitle());
         metadata.put("tags", note.getTags());
 
-        // 处理内容：移除 base64 图片并截断长度
+        // 移除 base64 图片并截断长度，防止超长报错
         String content = preprocessContentForVector(note.getContent());
 
         Document document = new Document(note.getId().toString(), content, metadata);
         vectorStore.add(List.of(document));
     }
 
-    // 预处理内容用于向量存储：移除 base64 图片，截断过长内容
+    // 预处理内容，移除 base64 图片，截断过长内容
     private String preprocessContentForVector(String content)
     {
         if (content == null || content.isEmpty())
@@ -115,7 +125,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
             return "";
         }
 
-        // 移除 base64 图片（data:image/... 格式）
+        // 移除 base64 图片，格式如：![image-Hiiii113](assets/image-Hiiii113.png)，并替换成"[图片]"
         String processed = content.replaceAll("!\\[.*?]\\(data:image/[^)]+\\)", "[图片]");
 
         // 截断过长内容
@@ -133,6 +143,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         vectorStore.delete(List.of(noteId.toString()));
     }
 
+    // 更新笔记
     @Override
     @Transactional
     @CacheEvict(value = "noteCache", key = "#noteId")
@@ -152,12 +163,6 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
             throw new BusinessException("无权修改此笔记", Result.CODE_FORBIDDEN);
         }
 
-        // 只有所有者可以修改 visibility
-        if (dto.getVisibility() != null && !note.getUserId().equals(userId))
-        {
-            throw new BusinessException("只有笔记所有者可以修改可见性", Result.CODE_FORBIDDEN);
-        }
-
         // 更新字段（选择性更新）
         if (dto.getTitle() != null)
         {
@@ -171,15 +176,11 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         {
             note.setTags(dto.getTags());
         }
-        if (dto.getVisibility() != null)
-        {
-            note.setVisibility(dto.getVisibility());
-        }
 
         // 保存更新
         this.updateById(note);
 
-        // 更新向量数据库（失败不影响主流程）
+        // 更新向量数据库
         try
         {
             // 删除
@@ -189,7 +190,6 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         }
         catch (Exception e)
         {
-            // 向量数据库更新失败，记录日志但不影响笔记更新
             log.warn("更新向量数据库失败: noteId = {}, error={}", noteId, e.getMessage());
         }
     }
@@ -214,9 +214,17 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         this.updateById(note);
 
         // 从向量数据库删除
-        deleteNoteFromVectorStore(noteId);
+        try
+        {
+            deleteNoteFromVectorStore(noteId);
+        }
+        catch (Exception e)
+        {
+            log.warn("删除时向量数据库删除失败: noteId = {}, error={}", noteId, e.getMessage());
+        }
     }
 
+    // 恢复笔记
     @Override
     @Transactional
     @CacheEvict(value = "noteCache", key = "#noteId")
@@ -237,9 +245,17 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         this.updateById(note);
 
         // 恢复到向量数据库
-        addNoteToVectorStore(note);
+        try
+        {
+            addNoteToVectorStore(note);
+        }
+        catch (Exception e)
+        {
+            log.warn("恢复向量数据库失败: noteId = {}, error={}", noteId, e.getMessage());
+        }
     }
 
+    // 获取笔记详情
     @Override
     public NoteDetailDto getNoteDetail(Long userId, Long noteId)
     {
@@ -263,6 +279,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         return dto;
     }
 
+    // 永久删除
     @Override
     @Transactional
     @CacheEvict(value = "noteCache", key = "#noteId")
@@ -276,7 +293,14 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         }
 
         // 从向量数据库删除
-        deleteNoteFromVectorStore(noteId);
+        try
+        {
+            deleteNoteFromVectorStore(noteId);
+        }
+        catch (Exception e)
+        {
+            log.warn("永久删除时向量数据库删除失败: noteId = {}, error={}", noteId, e.getMessage());
+        }
 
         // 物理删除
         this.removeById(noteId);
@@ -293,6 +317,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         return "标题：" + note.getTitle() + "\n\n内容：" + note.getContent();
     }
 
+    // 更新可见性
     @Override
     @CacheEvict(value = "noteCache", key = "#noteId")
     public void updateVisibility(Long userId, Long noteId, NoteVisibilityTypeEnum visibility)
@@ -312,6 +337,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         this.updateById(note);
     }
 
+    // 看看是否可以查看笔记详情
     @Override
     public boolean checkGetNodeDetailPermission(Long userId, Long noteId)
     {
@@ -358,6 +384,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         return canEdit;
     }
 
+    // 增加笔记的查看次数
     @Override
     public void incrementViewCount(Long noteId)
     {
@@ -367,6 +394,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
                 .update();
     }
 
+    // 获取最近常看3条笔记
     @Override
     public List<Note> getHotNotes(Long userId, Long noteId)
     {

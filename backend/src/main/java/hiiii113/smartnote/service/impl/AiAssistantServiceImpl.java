@@ -3,13 +3,9 @@ package hiiii113.smartnote.service.impl;
 import hiiii113.smartnote.config.AiAssistantProperties;
 import hiiii113.smartnote.dto.AiChatDto;
 import hiiii113.smartnote.entity.AiConversation;
-import hiiii113.smartnote.entity.Note;
-import hiiii113.smartnote.exception.BusinessException;
-import hiiii113.smartnote.mapper.NoteMapper;
-import hiiii113.smartnote.service.AiConversationService;
 import hiiii113.smartnote.service.AiAssistantService;
+import hiiii113.smartnote.service.AiConversationService;
 import hiiii113.smartnote.tools.NoteTools;
-import hiiii113.smartnote.utils.Result;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -18,7 +14,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,14 +29,14 @@ public class AiAssistantServiceImpl implements AiAssistantService
 {
     private final OpenAiChatModel chatModel;
     private final AiAssistantProperties aiAssistantProperties;
-    private final NoteMapper noteMapper;
-    private final NoteTools noteTools;
+    private final NoteTools noteTools; // ai tools
     private final AiConversationService aiConversationService;
 
     @Override
-    public Flux<String> chat(Long userId, AiChatDto dto)
+    @Transactional
+    public String chat(Long userId, AiChatDto dto)
     {
-        // 获取会话 id
+        // 获取会话 id（前端生成）
         String conversationId = dto.getConversationId();
 
         // 智能路由
@@ -51,7 +47,7 @@ public class AiAssistantServiceImpl implements AiAssistantService
         String systemPrompt = aiAssistantProperties.getPrompt(mode);
 
         // 构建用户消息
-        String userMessage = buildUserMessage(dto, mode, userId);
+        String userMessage = dto.getMessage();
 
         // 先加载会话历史
         List<AiConversation> history = aiConversationService.getConversationHistory(userId, conversationId);
@@ -83,14 +79,14 @@ public class AiAssistantServiceImpl implements AiAssistantService
             aiConversationService.saveAssistantMessage(userId, conversationId, response);
             log.info("保存AI响应到数据库, conversationId: {}, 响应长度: {}", conversationId, response.length());
 
-            return Flux.just(response);
+            return response;
         }
         catch (Exception e)
         {
             log.error("AI调用出错: {}", e.getMessage(), e);
             String errorMsg = "抱歉，处理您的请求时出现了问题，请稍后重试。";
             aiConversationService.saveAssistantMessage(userId, conversationId, errorMsg);
-            return Flux.just(errorMsg);
+            return errorMsg;
         }
     }
 
@@ -100,10 +96,12 @@ public class AiAssistantServiceImpl implements AiAssistantService
         List<Message> messages = new ArrayList<>();
         for (AiConversation conv : history)
         {
+            // 构建用户对应的的上下文
             if ("user".equals(conv.getRole()))
             {
                 messages.add(new UserMessage(conv.getContent()));
             }
+            // 构建 ai 回复对应的上下文
             else if ("assistant".equals(conv.getRole()))
             {
                 messages.add(new AssistantMessage(conv.getContent()));
@@ -115,10 +113,11 @@ public class AiAssistantServiceImpl implements AiAssistantService
     // 智能路由
     private String detectMode(String message)
     {
+        // 智能路由的提示词
         String routerPrompt = aiAssistantProperties.getPrompt("router");
         if (routerPrompt.isEmpty())
         {
-            return "chat";
+            return "chat"; // 默认 chat
         }
 
         try
@@ -130,10 +129,11 @@ public class AiAssistantServiceImpl implements AiAssistantService
                     .call()
                     .content();
 
+            // 格式化一下
             int modeNum = parseModeNumber(result);
             return switch (modeNum)
             {
-                case 2 -> "note-summary";
+                case 2 -> "note-summary-chat";
                 case 3 -> "knowledge-search";
                 default -> "chat";
             };
@@ -150,7 +150,7 @@ public class AiAssistantServiceImpl implements AiAssistantService
     {
         if (result == null || result.isBlank())
         {
-            return 1;
+            return 1; // 默认的 chat 模式
         }
         String trimmed = result.trim();
         if (!trimmed.isEmpty())
@@ -164,41 +164,5 @@ public class AiAssistantServiceImpl implements AiAssistantService
             }
         }
         return 1;
-    }
-
-    // 构建用户的 message
-    private String buildUserMessage(AiChatDto dto, String mode, Long userId)
-    {
-        String userMessage = dto.getMessage();
-
-        // 如果是笔记总结模式，需要获取笔记内容
-        if ("note-summary".equals(mode) && dto.getNoteId() != null)
-        {
-            Note note = noteMapper.selectById(dto.getNoteId());
-            if (note == null)
-            {
-                throw new BusinessException("笔记不存在", Result.CODE_NOT_FOUND);
-            }
-            userMessage = "请总结以下笔记内容：\n\n标题：" + note.getTitle() + "\n\n内容：\n" + note.getContent();
-        }
-
-        // 添加用户ID上下文
-        userMessage = "[当前用户ID: " + userId + "]\n" + userMessage;
-
-        return userMessage;
-    }
-
-    // 会话 id
-    @Override
-    public List<String> getConversationIds(Long userId)
-    {
-        return aiConversationService.getUserConversationIds(userId);
-    }
-
-    // 清除会话历史
-    @Override
-    public void clearHistory(Long userId, String conversationId)
-    {
-        aiConversationService.clearHistory(userId, conversationId);
     }
 }

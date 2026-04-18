@@ -128,7 +128,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User getUserInfo(Long userId)
     {
         User user = getUserById(userId);
-        // 清除敏感信息
+        // 去除密码字段
         user.setPassword(null);
         return user;
     }
@@ -211,11 +211,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         this.updateById(user);
     }
 
+    // 根据 account （手机号或邮箱）查找 User 对象
     @Override
     public User getUserByAccount(String account)
     {
         // 获取 User
-
         return lambdaQuery()
                 .eq(User::getPhone, account)
                 .or()
@@ -223,7 +223,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .one();
     }
 
-    // 根据ID获取用户（自动抛出异常）
+    // 根据ID获取用户
     private User getUserById(Long userId)
     {
         User user = this.getById(userId);

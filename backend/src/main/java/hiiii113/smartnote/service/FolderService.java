@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import hiiii113.smartnote.dto.CreateFolderDto;
 import hiiii113.smartnote.entity.Folder;
 
+/**
+ * 文件夹 service
+ */
 public interface FolderService extends IService<Folder>
 {
     // 创建文件夹

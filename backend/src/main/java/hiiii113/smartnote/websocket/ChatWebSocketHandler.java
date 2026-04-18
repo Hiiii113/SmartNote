@@ -100,13 +100,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler
         }
     }
 
-    // 检查是否在线
-    public boolean isOnline(Long userId)
-    {
-        WebSocketSession session = userSessions.get(userId);
-        return session != null && session.isOpen();
-    }
-
     // 从 session attributes 获取用户 ID
     private Long getUserId(WebSocketSession session)
     {

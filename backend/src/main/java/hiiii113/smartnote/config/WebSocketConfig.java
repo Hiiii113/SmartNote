@@ -24,12 +24,12 @@ public class WebSocketConfig implements WebSocketConfigurer
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry)
     {
-        registry.addHandler(chatWebSocketHandler, "/ws/chat")
-                .addInterceptors(wsAuthInterceptor)  // 握手拦截器，验证 token
+        registry.addHandler(chatWebSocketHandler, "/ws/chat") // "/ws/chat" 路径的都交给 ChatWebSocketHandler 处理
+                .addInterceptors(wsAuthInterceptor) // 被 wsAuthInterceptor 拦截
                 .setAllowedOrigins("*");
 
-        registry.addHandler(yjsWebSocketHandler, "/ws/yjs/*")
-                .addInterceptors(wsAuthInterceptor)  // 握手拦截器，验证 token
+        registry.addHandler(yjsWebSocketHandler, "/ws/yjs/*") // "/ws/chat" 路径的都交给 YjsWebSocketHandler 处理
+                .addInterceptors(wsAuthInterceptor) // 被 wsAuthInterceptor 拦截
                 .setAllowedOrigins("*");
     }
 }

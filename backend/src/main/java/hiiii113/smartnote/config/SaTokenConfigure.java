@@ -16,12 +16,12 @@ public class SaTokenConfigure implements WebMvcConfigurer
     @Override
     public void addInterceptors(InterceptorRegistry registry)
     {
-        // 验证登录
+        // 注册一个自定义拦截器
         registry.addInterceptor(new SaInterceptor(handle ->
                         SaRouter.match("/**")
-                                .notMatch("/users/login", "/users/logout", "/upload/**")
-                                .notMatch("/users")  // 注册接口 POST /users
-                                .check(r -> StpUtil.checkLogin())))
-                .addPathPatterns("/**");
+                                .notMatch("/users/login", "/users/logout", "/upload/**") // 登录、登出、查看图片放行
+                                .notMatch("/users")  // 注册接口 /users 排除
+                                .check(r -> StpUtil.checkLogin()))) // 检查是否登录，未登录抛出异常并接住
+                .addPathPatterns("/**"); // 对所有路径生效
     }
 }

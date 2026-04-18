@@ -1,5 +1,6 @@
 package hiiii113.smartnote.tools;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import hiiii113.smartnote.entity.Folder;
 import hiiii113.smartnote.entity.Note;
@@ -35,9 +36,11 @@ public class NoteTools
      */
     @Tool(description = "根据语义搜索笔记，返回匹配的笔记ID和标题列表。当用户想查找某主题的笔记时使用。")
     public String searchNotes(
-            @ToolParam(description = "搜索语义关键词，例如：关于工作计划的笔记") String keyword,
-            @ToolParam(description = "用户ID") Long userId)
+            @ToolParam(description = "搜索语义关键词，例如：关于工作计划的笔记") String keyword)
     {
+        // 获取用户 id
+        String userId = StpUtil.getLoginIdAsString();
+
         log.info("语义搜索笔记: keyword={}, userId={}", keyword, userId);
 
         // 构建元数据过滤条件（只搜索当前用户的笔记）
@@ -120,9 +123,11 @@ public class NoteTools
      */
     @Tool(description = "列出指定文件夹下的直接子文件夹和笔记，folderId为0时表示根目录。如需查看子文件夹内容，请再次调用此方法。")
     public String listNotes(
-            @ToolParam(description = "文件夹ID，0表示根目录") Long folderId,
-            @ToolParam(description = "用户ID，从上下文中获取") Long userId)
+            @ToolParam(description = "文件夹ID，0表示根目录") Long folderId)
     {
+        // 获取用户 id
+        String userId = StpUtil.getLoginIdAsString();
+
         log.info("列出文件夹和笔记: folderId={}, userId={}", folderId, userId);
 
         if (userId == null)

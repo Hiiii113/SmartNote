@@ -1,12 +1,13 @@
 package hiiii113.smartnote.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import hiiii113.smartnote.dto.NotePermissionDto;
 import hiiii113.smartnote.entity.NotePermission;
 
 import java.util.List;
 
 /**
- * 笔记权限 service 层
+ * 笔记权限 service
  */
 public interface NotePermissionService extends IService<NotePermission>
 {
@@ -17,7 +18,7 @@ public interface NotePermissionService extends IService<NotePermission>
     void removePermission(Long noteId, Long userId);
 
     // 获取笔记的所有授权用户
-    List<NotePermission> getNotePermissions(Long noteId);
+    List<NotePermissionDto> getNotePermissions(Long noteId);
 
     // 检查用户是否有权限
     boolean hasPermission(Long noteId, Long userId);

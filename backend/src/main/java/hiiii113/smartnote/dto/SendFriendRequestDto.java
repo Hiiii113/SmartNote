@@ -9,5 +9,5 @@ import lombok.Data;
 public class SendFriendRequestDto
 {
     // 手机号或邮箱
-    private String contact;
+    private String account;
 }

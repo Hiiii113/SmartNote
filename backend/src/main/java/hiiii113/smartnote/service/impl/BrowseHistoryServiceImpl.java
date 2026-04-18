@@ -3,18 +3,25 @@ package hiiii113.smartnote.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import hiiii113.smartnote.entity.BrowseHistory;
 import hiiii113.smartnote.mapper.BrowseHistoryMapper;
+import hiiii113.smartnote.mapper.NoteMapper;
 import hiiii113.smartnote.service.BrowseHistoryService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 浏览历史 service 实现类
  */
 @Service
+@RequiredArgsConstructor
 public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, BrowseHistory> implements BrowseHistoryService
 {
+    private final NoteMapper noteMapper;
+
     // 记录浏览
     @Override
     public void recordView(Long userId, Long noteId)
@@ -38,7 +45,7 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
             history = new BrowseHistory();
             history.setUserId(userId);
             history.setNoteId(noteId);
-            history.setViewCount(1);
+            history.setViewCount(1); // 一开始是 1
             history.setBrowsedAt(LocalDateTime.now());
             this.save(history);
         }
@@ -52,7 +59,22 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
                 .eq(BrowseHistory::getUserId, userId)
                 .orderByDesc(BrowseHistory::getBrowsedAt)
                 .last(limit != null, "LIMIT " + limit) // 如果有限制就添加
-                .list();
+                .list()
+                .stream()
+                .map(
+                        history ->
+                        {
+                            var note = noteMapper.selectById(history.getNoteId());
+                            if (note != null)
+                            {
+                                history.setNoteTitle(note.getTitle());
+                                return history;
+                            }
+                            return null;
+                        }
+                )
+                .filter(Objects::nonNull) // 过滤掉已经被删除了的
+                .collect(Collectors.toList());
     }
 
     // 清空浏览历史
@@ -62,25 +84,5 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
         lambdaUpdate()
                 .eq(BrowseHistory::getUserId, userId)
                 .remove();
-    }
-
-    // 删除单条浏览记录
-    @Override
-    public void deleteHistory(Long userId, Long noteId)
-    {
-        lambdaUpdate()
-                .eq(BrowseHistory::getUserId, userId)
-                .eq(BrowseHistory::getNoteId, noteId)
-                .remove();
-    }
-
-    @Override
-    public int getHistoryCount(Long userId, Long noteId)
-    {
-        BrowseHistory history = lambdaQuery()
-                .eq(BrowseHistory::getUserId, userId)
-                .eq(BrowseHistory::getNoteId, noteId)
-                .one();
-        return history == null ? 0 : history.getViewCount();
     }
 }

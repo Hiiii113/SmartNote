@@ -16,7 +16,7 @@ public interface AiConversationService extends IService<AiConversation>
     // 保存AI消息
     void saveAssistantMessage(Long userId, String conversationId, String content);
 
-    // 获取会话的对话历史（按时间升序，用于构建上下文）
+    // 获取会话的对话历史
     List<AiConversation> getConversationHistory(Long userId, String conversationId);
 
     // 清空会话历史

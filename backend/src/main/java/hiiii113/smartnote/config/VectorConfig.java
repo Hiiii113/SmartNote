@@ -17,6 +17,7 @@ public class VectorConfig
     @Bean
     public VectorStore vectorStore(EmbeddingModel embeddingModel)
     {
+        // 使用 embeddingModel 返回向量
         SimpleVectorStore vectorStore = SimpleVectorStore.builder(embeddingModel).build();
 
         // 把向量数据库内容存在 JSON 文件中，启动自动加载

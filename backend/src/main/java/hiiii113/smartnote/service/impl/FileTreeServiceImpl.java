@@ -50,21 +50,21 @@ public class FileTreeServiceImpl implements FileTreeService
     @Override
     public List<FileTreeNodeDto> getRootNodes(Long userId)
     {
-        return getNodes(userId, 0L, 0);
+        return getNodes(userId, 0L, 0); // 0-根目录
     }
 
     // 获取子节点
     @Override
     public List<FileTreeNodeDto> getChildrenNodes(Long userId, Long parentId)
     {
-        return getNodes(userId, parentId, 0);
+        return getNodes(userId, parentId, 0); // 对应 parentId 下面的子节点
     }
 
     // 获取回收站根目录
     @Override
     public List<FileTreeNodeDto> getTrashRootNodes(Long userId)
     {
-        // 回收站根目录 parentId 设置为了 -1，并且根目录的 is_deleted 字段都是 1
+        // 回收站根目录 parentId 设置为了 -1，并且根目录被删除文件的 is_deleted 字段都是 1
         return getNodes(userId, -1L, 1);
     }
 
