@@ -1,5 +1,6 @@
 package hiiii113.smartnote.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Data;
 public class AiChatDto
 {
     // 用户消息
+    @NotBlank(message = "消息内容不能为空")
     private String message;
 
     // 会话 ID（前端传入，用于加载历史上下文）

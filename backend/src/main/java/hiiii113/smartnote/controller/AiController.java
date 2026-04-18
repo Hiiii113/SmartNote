@@ -10,6 +10,7 @@ import hiiii113.smartnote.service.AiConversationService;
 import hiiii113.smartnote.service.AiSummaryService;
 import hiiii113.smartnote.service.NoteService;
 import hiiii113.smartnote.utils.Result;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -67,7 +68,7 @@ public class AiController
         // 保存到数据库
         aiSummaryService.saveAiSummary(noteId, response);
         // 返回
-        return Result.ok("", response);
+        return Result.ok("笔记分析成功", response);
     }
 
     /**
@@ -85,7 +86,7 @@ public class AiController
         // 获取总结
         String response = aiSummaryService.getAiSummary(userId, noteId);
         // 返回结果
-        return Result.ok("", response);
+        return Result.ok("AI总结获取成功", response);
     }
 
     /**
@@ -96,7 +97,7 @@ public class AiController
      */
     @PostMapping("/chat/stream")
     @LogAnnotation(module = "AI", operator = "AI助手聊天")
-    public Result<String> chatStream(@RequestBody AiChatDto dto)
+    public Result<String> chatStream(@Valid @RequestBody AiChatDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
@@ -104,7 +105,7 @@ public class AiController
         // 获取完整响应
         String response = aiAssistantService.chat(userId, dto);
         // 返回结果
-        return Result.ok("", response);
+        return Result.ok("AI回复成功", response);
     }
 
     /**
@@ -156,6 +157,6 @@ public class AiController
         // 删除会话历史
         aiConversationService.clearHistory(userId, conversationId);
         // 返回
-        return Result.ok();
+        return Result.ok("会话记录已清空");
     }
 }

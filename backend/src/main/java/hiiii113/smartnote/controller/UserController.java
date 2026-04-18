@@ -36,7 +36,7 @@ public class UserController
         // 获取 Token
         String token = StpUtil.getTokenValue();
         // 返回信息和 Token
-        return Result.ok("", token);
+        return Result.ok("登录成功", token);
     }
 
     /**
@@ -49,7 +49,7 @@ public class UserController
     {
         // 注册
         userService.register(dto);
-        return Result.created();
+        return Result.created("注册成功");
     }
 
     /**
@@ -62,7 +62,7 @@ public class UserController
         // 清除 Token
         StpUtil.logout();
         // 返回退出登录成功
-        return Result.ok();
+        return Result.ok("退出登录成功");
     }
 
     /**
@@ -86,13 +86,13 @@ public class UserController
      */
     @PutMapping("/username")
     @LogAnnotation(module = "用户", operator = "修改用户名")
-    public Result<Void> updateUsername(@RequestBody UpdateUsernameDto dto)
+    public Result<Void> updateUsername(@Valid @RequestBody UpdateUsernameDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 修改用户名
         userService.updateUsername(userId, dto);
-        return Result.ok();
+        return Result.ok("用户名修改成功");
     }
 
     /**
@@ -101,13 +101,13 @@ public class UserController
      */
     @PutMapping("/motto")
     @LogAnnotation(module = "用户", operator = "修改座右铭")
-    public Result<Void> updateMotto(@RequestBody UpdateMottoDto dto)
+    public Result<Void> updateMotto(@Valid @RequestBody UpdateMottoDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 修改座右铭
         userService.updateMotto(userId, dto);
-        return Result.ok();
+        return Result.ok("座右铭修改成功");
     }
 
     /**
@@ -122,7 +122,7 @@ public class UserController
         Long userId = StpUtil.getLoginIdAsLong();
         // 修改密码
         userService.updatePassword(userId, dto);
-        return Result.ok();
+        return Result.ok("密码修改成功");
     }
 
     /**
@@ -137,6 +137,6 @@ public class UserController
         Long userId = StpUtil.getLoginIdAsLong();
         // 保存头像
         userService.updateAvatar(file, userId);
-        return Result.ok();
+        return Result.ok("头像修改成功");
     }
 }

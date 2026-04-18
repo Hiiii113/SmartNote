@@ -1,5 +1,6 @@
 package hiiii113.smartnote.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -9,5 +10,6 @@ import lombok.Data;
 public class HandleFriendRequestDto
 {
     // 是否同意
+    @NotNull(message = "请指定是否同意该申请")
     private Boolean accept;
 }

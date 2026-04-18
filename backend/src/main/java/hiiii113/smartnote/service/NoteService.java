@@ -3,6 +3,7 @@ package hiiii113.smartnote.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import hiiii113.smartnote.dto.CreateNoteDto;
 import hiiii113.smartnote.dto.NoteDetailDto;
+import hiiii113.smartnote.dto.NoteSyncMessageDto;
 import hiiii113.smartnote.dto.UpdateNoteDto;
 import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
@@ -46,4 +47,7 @@ public interface NoteService extends IService<Note>
 
     // 获取最近常看三篇笔记
     List<Note> getHotNotes(Long userId, Long noteId);
+
+    // 获取笔记同步消息
+    NoteSyncMessageDto getNoteSyncMessage(Long noteId);
 }

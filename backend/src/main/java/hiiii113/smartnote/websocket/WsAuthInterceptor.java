@@ -9,7 +9,9 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,23 +24,14 @@ public class WsAuthInterceptor implements HandshakeInterceptor
     public static final String USER_ID_KEY = "userId";
 
     @Override
-    public boolean beforeHandshake(ServerHttpRequest request, @NonNull ServerHttpResponse response,
+    public boolean beforeHandshake(@NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response,
                                    @NonNull WebSocketHandler wsHandler, @NonNull Map<String, Object> attributes)
     {
-        String query = request.getURI().getQuery();
-
-        if (query == null || !query.contains("token="))
+        String token = extractToken(request);
+        if (token == null || token.isBlank())
         {
             log.warn("WebSocket 握手失败：缺少 token 参数");
             return false;
-        }
-
-        // 提取 token，处理可能存在的尾部斜杠
-        String token = query.replace("token=", "");
-        // 移除 token 后面可能存在的路径部分
-        if (token.contains("/"))
-        {
-            token = token.substring(0, token.indexOf("/"));
         }
 
         try
@@ -65,6 +58,26 @@ public class WsAuthInterceptor implements HandshakeInterceptor
             log.error("WebSocket 握手异常: {}", e.getMessage());
             return false;
         }
+    }
+
+    // 尝试从 URL 和请求头中获取 Token
+    private String extractToken(ServerHttpRequest request)
+    {
+        List<String> tokens = UriComponentsBuilder.fromUri(request.getURI())
+                .build()
+                .getQueryParams()
+                .get("token");
+        if (tokens != null && !tokens.isEmpty() && tokens.get(0) != null)
+        {
+            return tokens.get(0).trim();
+        }
+
+        List<String> headerTokens = request.getHeaders().get("satoken");
+        if (headerTokens != null && !headerTokens.isEmpty() && headerTokens.get(0) != null)
+        {
+            return headerTokens.get(0).trim();
+        }
+        return null;
     }
 
     @Override

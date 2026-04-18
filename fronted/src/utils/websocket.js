@@ -26,9 +26,15 @@ class WebSocketClient {
       return
     }
 
+    const activeToken = token || localStorage.getItem('token')
+    if (!activeToken) {
+      console.error('WebSocket 连接失败: 缺少 token')
+      return
+    }
+
     this.isConnecting = true
     this.shouldReconnect = true // 连接时启用重连
-    const url = `${this.url}?token=${token}`
+    const url = `${this.url}?token=${encodeURIComponent(activeToken)}`
 
     try {
       this.ws = new WebSocket(url)
@@ -57,7 +63,7 @@ class WebSocketClient {
         this.stopHeartbeat()
         // 只有在应该重连时才重连
         if (this.shouldReconnect) {
-          this.reconnect(token)
+          this.reconnect()
         }
       }
 
@@ -69,7 +75,7 @@ class WebSocketClient {
       console.error('WebSocket 连接失败:', error)
       this.isConnecting = false
       if (this.shouldReconnect) {
-        this.reconnect(token)
+        this.reconnect()
       }
     }
   }
@@ -89,12 +95,12 @@ class WebSocketClient {
   }
 
   // 重连
-  reconnect(token) {
+  reconnect() {
     if (this.reconnectTimer) return
     console.log(`${this.reconnectInterval / 1000}秒后尝试重连...`)
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
-      this.connect(token)
+      this.connect()
     }, this.reconnectInterval)
   }
 

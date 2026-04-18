@@ -9,6 +9,7 @@ import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.NotePermissionService;
 import hiiii113.smartnote.service.NoteService;
 import hiiii113.smartnote.utils.Result;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,7 +54,7 @@ public class NotePermissionController
      */
     @PostMapping
     @LogAnnotation(module = "笔记权限", operator = "设置权限")
-    public Result<Void> setPermission(@PathVariable Long noteId, @RequestBody SetPermissionDto dto)
+    public Result<Void> setPermission(@PathVariable Long noteId, @Valid @RequestBody SetPermissionDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
@@ -62,7 +63,7 @@ public class NotePermissionController
 
         // 设置权限
         notePermissionService.setPermission(noteId, dto.getUserId(), dto.getCanEdit());
-        return Result.ok();
+        return Result.ok("权限设置成功");
     }
 
     /**
@@ -82,7 +83,7 @@ public class NotePermissionController
 
         // 删除权限
         notePermissionService.removePermission(noteId, targetUserId);
-        return Result.ok();
+        return Result.ok("权限移除成功");
     }
 
     /**

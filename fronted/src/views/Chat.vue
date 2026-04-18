@@ -364,7 +364,7 @@ const saveGroup = async () => {
 const handleDeleteFriend = async () => {
   if (!chatStore.currentFriend) return
   try {
-    await ElMessageBox.confirm(`确定要删除好友 ${chatStore.currentFriend.friendName} 吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要删除好友 ${chatStore.currentFriend.friendName} 吗？`, '提示', { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' })
     await del(`/friends/${chatStore.currentFriend.friendId}`)
     ElMessage.success('已删除好友')
     chatStore.setCurrentFriend(null)

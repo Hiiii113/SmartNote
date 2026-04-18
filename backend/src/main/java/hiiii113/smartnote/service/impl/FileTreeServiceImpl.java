@@ -68,6 +68,12 @@ public class FileTreeServiceImpl implements FileTreeService
         return getNodes(userId, -1L, 1);
     }
 
+    @Override
+    public List<FileTreeNodeDto> getTrashChildrenNodes(Long userId, Long parentId)
+    {
+        return getNodes(userId, parentId, 1); // 已删除 - 1
+    }
+
     // 搜索节点
     @Override
     public List<FileTreeNodeDto> searchNodes(Long userId, String keyword)

@@ -2,6 +2,7 @@ package hiiii113.smartnote.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import hiiii113.smartnote.entity.BrowseHistory;
+import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.mapper.BrowseHistoryMapper;
 import hiiii113.smartnote.mapper.NoteMapper;
 import hiiii113.smartnote.service.BrowseHistoryService;
@@ -64,8 +65,9 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
                 .map(
                         history ->
                         {
-                            var note = noteMapper.selectById(history.getNoteId());
-                            if (note != null)
+                            Note note = noteMapper.selectById(history.getNoteId());
+                            // 过滤已删除笔记
+                            if (note != null && note.getIsDeleted() != null && note.getIsDeleted() == 0)
                             {
                                 history.setNoteTitle(note.getTitle());
                                 return history;

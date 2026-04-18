@@ -9,6 +9,8 @@ import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
 import hiiii113.smartnote.log.LogAnnotation;
 import hiiii113.smartnote.service.NoteService;
 import hiiii113.smartnote.utils.Result;
+import hiiii113.smartnote.websocket.YjsWebSocketHandler;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +25,7 @@ import java.util.List;
 public class NoteController
 {
     private final NoteService noteService;
+    private final YjsWebSocketHandler yjsWebSocketHandler;
 
     /**
      * 新建笔记
@@ -30,13 +33,13 @@ public class NoteController
      */
     @PostMapping
     @LogAnnotation(module = "笔记", operator = "新建笔记")
-    public Result<Void> createNote(@RequestBody CreateNoteDto dto)
+    public Result<Void> createNote(@Valid @RequestBody CreateNoteDto dto)
     {
         // 获取用户 id
         Long userId = StpUtil.getLoginIdAsLong();
         // 新建一个笔记
         noteService.createNote(userId, dto);
-        return Result.ok();
+        return Result.ok("笔记创建成功");
     }
 
     /**
@@ -68,7 +71,9 @@ public class NoteController
         Long userId = StpUtil.getLoginIdAsLong();
         // 更新笔记
         noteService.updateNote(userId, noteId, dto);
-        return Result.ok();
+        // 推送
+        yjsWebSocketHandler.pushNoteUpdated(noteId);
+        return Result.ok("笔记更新成功");
     }
 
     /**
@@ -84,7 +89,7 @@ public class NoteController
         Long userId = StpUtil.getLoginIdAsLong();
         // 删除笔记
         noteService.deleteNote(userId, noteId);
-        return Result.ok();
+        return Result.ok("笔记已移入回收站");
     }
 
     /**
@@ -99,7 +104,7 @@ public class NoteController
         Long userId = StpUtil.getLoginIdAsLong();
         // 恢复笔记
         noteService.restoreNote(userId, noteId);
-        return Result.ok();
+        return Result.ok("笔记恢复成功");
     }
 
     /**
@@ -114,7 +119,7 @@ public class NoteController
         Long userId = StpUtil.getLoginIdAsLong();
         // 永久删除
         noteService.permanentDelete(userId, noteId);
-        return Result.ok();
+        return Result.ok("笔记已永久删除");
     }
 
     /**
@@ -130,7 +135,7 @@ public class NoteController
         Long userId = StpUtil.getLoginIdAsLong();
         // 修改笔记可见性
         noteService.updateVisibility(userId, noteId, visibility);
-        return Result.ok();
+        return Result.ok("笔记可见性修改成功");
     }
 
     /**
@@ -146,5 +151,17 @@ public class NoteController
         // 获取
         List<Note> notes = noteService.getHotNotes(userId, null);
         return Result.ok(notes);
+    }
+
+    /**
+     * 获取笔记协同在线人数
+     * @param noteId 笔记 id
+     * @return 在线人数
+     */
+    @GetMapping("/{noteId}/online-count")
+    public Result<Integer> getOnlineCount(@PathVariable Long noteId)
+    {
+        int count = YjsWebSocketHandler.getOnlineCount(noteId.toString());
+        return Result.ok(count);
     }
 }

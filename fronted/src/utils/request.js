@@ -35,7 +35,6 @@ instance.interceptors.response.use(
       handleUnauthorized()
       return Promise.reject(response.data)
     } else {
-      ElMessage.error(msg || '操作失败')
       return Promise.reject(response.data)
     }
   },
