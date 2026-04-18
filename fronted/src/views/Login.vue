@@ -10,20 +10,25 @@
       </el-radio-group>
 
       <!-- 登录表单 -->
-      <el-form v-if="currentView === '登录'" ref="loginFormRef" :model="loginForm" :rules="loginRules" label-position="top" @submit.prevent="handleLogin">
+      <el-form v-if="currentView === '登录'" ref="loginFormRef" :model="loginForm"
+               :rules="loginRules" label-position="top" @submit.prevent="handleLogin">
         <el-form-item prop="account" label="账号">
-          <el-input v-model="loginForm.account" placeholder="请输入手机号或邮箱" size="large" />
+          <el-input v-model="loginForm.account" placeholder="请输入手机号或邮箱" size="large"/>
         </el-form-item>
         <el-form-item prop="password" label="密码">
-          <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" size="large" show-password />
+          <el-input v-model="loginForm.password" type="password" placeholder="请输入密码"
+                    size="large" show-password/>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" native-type="submit" size="large" :loading="loading" style="width: 100%">登录</el-button>
+          <el-button type="primary" native-type="submit" size="large" :loading="loading"
+                     style="width: 100%">登录
+          </el-button>
         </el-form-item>
       </el-form>
 
       <!-- 注册表单 -->
-      <el-form v-else ref="registerFormRef" :model="registerForm" :rules="registerRules" label-position="top" @submit.prevent="handleRegister">
+      <el-form v-else ref="registerFormRef" :model="registerForm" :rules="registerRules"
+               label-position="top" @submit.prevent="handleRegister">
         <el-form-item label="注册方式">
           <el-radio-group v-model="registerForm.type" size="large" style="width: 100%">
             <el-radio-button value="手机号" style="width: 50%">手机号</el-radio-button>
@@ -31,16 +36,21 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item prop="account" :label="registerForm.type">
-          <el-input v-model="registerForm.account" :placeholder="'请输入' + registerForm.type" size="large" />
+          <el-input v-model="registerForm.account" :placeholder="'请输入' + registerForm.type"
+                    size="large"/>
         </el-form-item>
         <el-form-item prop="password" label="密码">
-          <el-input v-model="registerForm.password" type="password" placeholder="请输入密码" size="large" show-password />
+          <el-input v-model="registerForm.password" type="password" placeholder="请输入密码"
+                    size="large" show-password/>
         </el-form-item>
         <el-form-item prop="confirmPassword" label="确认密码">
-          <el-input v-model="registerForm.confirmPassword" type="password" placeholder="请再次输入密码" size="large" show-password />
+          <el-input v-model="registerForm.confirmPassword" type="password"
+                    placeholder="请再次输入密码" size="large" show-password/>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" native-type="submit" size="large" :loading="loading" style="width: 100%">注册</el-button>
+          <el-button type="primary" native-type="submit" size="large" :loading="loading"
+                     style="width: 100%">注册
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -48,10 +58,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { post } from '@/utils/request.js'
-import { ElMessage } from 'element-plus'
+import {reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {post} from '@/utils/request.js'
+import {ElMessage} from 'element-plus'
 
 const router = useRouter()
 
@@ -81,8 +91,8 @@ const registerForm = reactive({
 
 // 登录校验规则
 const loginRules = {
-  account: [{ required: true, message: '请输入账号', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  account: [{required: true, message: '请输入账号', trigger: 'blur'}],
+  password: [{required: true, message: '请输入密码', trigger: 'blur'}]
 }
 
 // 注册校验规则
@@ -95,14 +105,14 @@ const validateConfirmPassword = (rule, value, callback) => {
 }
 
 const registerRules = {
-  account: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  account: [{required: true, message: '请输入账号', trigger: 'blur'}],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 8, max: 20, message: '密码长度为8-20位', trigger: 'blur' }
+    {required: true, message: '请输入密码', trigger: 'blur'},
+    {min: 8, max: 20, message: '密码长度为8-20位', trigger: 'blur'}
   ],
   confirmPassword: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
-    { validator: validateConfirmPassword, trigger: 'blur' }
+    {required: true, message: '请确认密码', trigger: 'blur'},
+    {validator: validateConfirmPassword, trigger: 'blur'}
   ]
 }
 
@@ -113,7 +123,7 @@ const handleLogin = async () => {
 
   loading.value = true
   try {
-    const data = { password: loginForm.password }
+    const data = {password: loginForm.password}
     if (/^1[3-9]\d{9}$/.test(loginForm.account)) {
       data.phone = loginForm.account
     } else {
@@ -125,6 +135,8 @@ const handleLogin = async () => {
     }
     ElMessage.success('登录成功！')
     router.push('/note')
+  } catch (err) {
+    ElMessage.error(err.msg || '登录失败！')
   } finally {
     loading.value = false
   }
@@ -137,7 +149,7 @@ const handleRegister = async () => {
 
   loading.value = true
   try {
-    const data = { password: registerForm.password }
+    const data = {password: registerForm.password}
     if (registerForm.type === '手机号') {
       data.phone = registerForm.account
     } else {
@@ -146,6 +158,8 @@ const handleRegister = async () => {
     await post('/users', data)
     ElMessage.success('注册成功！')
     currentView.value = '登录'
+  } catch (err) {
+    ElMessage.error(err.msg || '注册失败！')
   } finally {
     loading.value = false
   }

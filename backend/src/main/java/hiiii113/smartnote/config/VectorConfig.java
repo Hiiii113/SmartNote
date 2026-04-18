@@ -21,7 +21,7 @@ public class VectorConfig
         SimpleVectorStore vectorStore = SimpleVectorStore.builder(embeddingModel).build();
 
         // 把向量数据库内容存在 JSON 文件中，启动自动加载
-        File vectorFile = new File("vectors.json");
+        File vectorFile = new File(System.getProperty("user.dir"), "vectors.json");
         if (vectorFile.exists())
         {
             vectorStore.load(vectorFile);
