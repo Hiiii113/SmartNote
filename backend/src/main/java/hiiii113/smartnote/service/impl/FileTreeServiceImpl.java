@@ -6,6 +6,7 @@ import hiiii113.smartnote.entity.Note;
 import hiiii113.smartnote.enums.FileTreeNodeTypeEnum;
 import hiiii113.smartnote.service.FileTreeService;
 import hiiii113.smartnote.service.FolderService;
+import hiiii113.smartnote.service.FriendshipService;
 import hiiii113.smartnote.service.NoteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

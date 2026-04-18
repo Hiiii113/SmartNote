@@ -11,10 +11,7 @@ import hiiii113.smartnote.enums.NoteVisibilityTypeEnum;
 import hiiii113.smartnote.exception.BusinessException;
 import hiiii113.smartnote.mapper.FolderMapper;
 import hiiii113.smartnote.mapper.NoteMapper;
-import hiiii113.smartnote.service.BrowseHistoryService;
-import hiiii113.smartnote.service.NoteCacheService;
-import hiiii113.smartnote.service.NotePermissionService;
-import hiiii113.smartnote.service.NoteService;
+import hiiii113.smartnote.service.*;
 import hiiii113.smartnote.utils.Result;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +34,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     private final FolderMapper folderMapper;
     private final BrowseHistoryService browseHistoryService;
     private final NotePermissionService notePermissionService;
+    private final FriendshipService friendshipService;
     private final VectorStore vectorStore;
     private final NoteCacheService noteCacheService;
 
@@ -155,6 +153,15 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         if (note == null)
         {
             throw new BusinessException("笔记不存在", 404);
+        }
+
+        // 非笔记所有者：必须是好友才能编辑
+        if (!note.getUserId().equals(userId))
+        {
+            if (!friendshipService.isFriend(userId, note.getUserId()))
+            {
+                throw new BusinessException("无权修改此笔记", Result.CODE_FORBIDDEN);
+            }
         }
 
         // 只有所有者或被授权可编辑的用户才能修改
@@ -379,17 +386,27 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
             canView = true;
             canEdit = true;
         }
-        // 被授权的用户
-        else if (notePermissionService.hasPermission(noteId, userId))
+        else
         {
-            canView = true;
-            canEdit = notePermissionService.canEdit(noteId, userId);
+            // 必须是好友
+            if (!friendshipService.isFriend(userId, note.getUserId()))
+            {
+                throw new BusinessException("无权查看此笔记", Result.CODE_FORBIDDEN);
+            }
+
+            // 被授权的用户
+            if (notePermissionService.hasPermission(noteId, userId))
+            {
+                canView = true;
+                canEdit = notePermissionService.canEdit(noteId, userId);
+            }
+            // 公开
+            else if (note.getVisibility() == NoteVisibilityTypeEnum.PUBLIC)
+            {
+                canView = true;
+            }
         }
-        // 公开
-        else if (note.getVisibility() == NoteVisibilityTypeEnum.PUBLIC)
-        {
-            canView = true;
-        }
+
 
         if (!canView)
         {
