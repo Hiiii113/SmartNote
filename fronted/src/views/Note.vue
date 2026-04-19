@@ -225,7 +225,7 @@
               <el-button type="primary" :icon="Check" @click="handleSaveNote">保存</el-button>
               <span v-if="autoSaveStatus === 'saving'" class="auto-save-status">保存中...</span>
               <span v-else-if="autoSaveStatus === 'saved'" class="auto-save-status saved">已保存</span>
-              <span v-if="syncStatus === 'connected'" class="sync-status connected">协同在线（{{ onlineCount }}人）</span>
+              <span v-if="syncStatus === 'connected'" class="sync-status connected">协同在线</span>
               <span v-else-if="syncStatus === 'connecting'" class="sync-status">连接中...</span>
               <span v-else-if="syncStatus === 'disconnected'" class="sync-status disconnected">离线</span>
             </div>

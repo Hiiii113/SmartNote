@@ -140,6 +140,7 @@ public class FolderServiceImpl extends ServiceImpl<FolderMapper, Folder> impleme
     }
 
     @Override
+    @Transactional
     public void restoreFolder(Long userId, Long folderId)
     {
         // 查询文件夹
@@ -149,12 +150,48 @@ public class FolderServiceImpl extends ServiceImpl<FolderMapper, Folder> impleme
             throw new BusinessException("文件夹不存在", Result.CODE_NOT_FOUND);
         }
 
-        // 设置 is_deleted = 0，parentId = 0（放回根目录），path = /root
-        folder.setIsDeleted(0);
-        folder.setDeletedAt(null);
-        folder.setParentId(0L);
-        folder.setPath("/root/" + folder.getName());
-        this.updateById(folder);
+        // 递归恢复子文件夹和笔记
+        restoreFolderSubtree(userId, folderId, folder.getName());
+    }
+
+    // 递归恢复文件夹及其所有子内容
+    private void restoreFolderSubtree(Long userId, Long folderId, String rootFolderName)
+    {
+        // 恢复当前文件夹下的所有已删除的子文件夹
+        List<Folder> children = this.lambdaQuery()
+                .eq(Folder::getUserId, userId)
+                .eq(Folder::getParentId, folderId)
+                .eq(Folder::getIsDeleted, 1)
+                .list();
+        for (Folder child : children)
+        {
+            restoreFolderSubtree(userId, child.getId(), rootFolderName);
+        }
+
+        // 恢复当前文件夹下的所有已删除的笔记
+        LambdaUpdateWrapper<Note> noteUw = new LambdaUpdateWrapper<>();
+        noteUw.eq(Note::getUserId, userId)
+                .eq(Note::getFolderId, folderId)
+                .eq(Note::getIsDeleted, 1)
+                .set(Note::getIsDeleted, 0)
+                .set(Note::getDeletedAt, null)
+                .set(Note::getFolderId, folderId);
+        noteMapper.update(null, noteUw);
+
+        // 恢复当前文件夹
+        Folder folder = this.getById(folderId);
+        if (folder != null && userId.equals(folder.getUserId()))
+        {
+            folder.setIsDeleted(0);
+            folder.setDeletedAt(null);
+            // 如果是最外层文件夹，放到根目录；否则保持原来的父子关系
+            if (folderId.equals(folderId) && folder.getParentId().equals(-1L))
+            {
+                folder.setParentId(0L);
+                folder.setPath("/root/" + rootFolderName);
+            }
+            this.updateById(folder);
+        }
     }
 
     @Override
